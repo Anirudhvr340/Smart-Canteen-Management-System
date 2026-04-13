@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:fragment="layout(content, pageTitle)">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title th:text="${pageTitle} + ' | SCMS'">SCMS</title>
+  <link rel="stylesheet" th:href="@{/css/main.css}"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <span class="brand-icon">🍽️</span>
+    <div><div class="brand-name">SCMS</div><div class="brand-sub">Smart Canteen</div></div>
+  </div>
+  <nav class="sidebar-nav">
+    <div sec:authorize="hasRole('ADMIN')">
+      <div class="nav-section">Admin</div>
+      <a th:href="@{/admin/dashboard}"  class="nav-link"><i class="fa fa-chart-line"></i> Dashboard</a>
+      <a th:href="@{/admin/orders}"     class="nav-link"><i class="fa fa-receipt"></i> All Orders</a>
+      <a th:href="@{/admin/menu}"       class="nav-link"><i class="fa fa-utensils"></i> Menu</a>
+      <a th:href="@{/admin/inventory}"  class="nav-link"><i class="fa fa-boxes-stacked"></i> Inventory</a>
+      <a th:href="@{/admin/coupons}"    class="nav-link"><i class="fa fa-ticket"></i> Coupons</a>
+      <a th:href="@{/admin/users}"      class="nav-link"><i class="fa fa-users"></i> Users</a>
+      <a th:href="@{/admin/feedback}"   class="nav-link"><i class="fa fa-star"></i> Feedback</a>
+      <div class="nav-section" style="margin-top:8px;">Also Access</div>
+      <a th:href="@{/staff/queue}"      class="nav-link"><i class="fa fa-list-check"></i> Kitchen Queue</a>
+      <a th:href="@{/customer/menu}"    class="nav-link"><i class="fa fa-bowl-food"></i> Customer View</a>
+    </div>
+    <div sec:authorize="hasRole('STAFF') and !hasRole('ADMIN')">
+      <div class="nav-section">Staff</div>
+      <a th:href="@{/staff/queue}" class="nav-link"><i class="fa fa-list-check"></i> Kitchen Queue</a>
+    </div>
+    <div sec:authorize="hasRole('INVENTORY_MANAGER') and !hasRole('ADMIN')">
+      <div class="nav-section">Inventory</div>
+      <a th:href="@{/inventory/dashboard}" class="nav-link"><i class="fa fa-boxes-stacked"></i> Stock Dashboard</a>
+    </div>
+    <div sec:authorize="hasRole('CUSTOMER')">
+      <div class="nav-section">Customer</div>
+      <a th:href="@{/customer/menu}"   class="nav-link"><i class="fa fa-utensils"></i> Browse Menu</a>
+      <a th:href="@{/customer/orders}" class="nav-link"><i class="fa fa-bag-shopping"></i> My Orders</a>
+      <a th:href="@{/customer/wallet}" class="nav-link"><i class="fa fa-wallet"></i> Wallet</a>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-info" sec:authorize="isAuthenticated()">
+      <div class="user-avatar" th:text="${#authentication.principal.username.substring(0,1).toUpperCase()}">U</div>
+      <div>
+        <div class="user-email" th:text="${#authentication.principal.username}"></div>
+        <div class="user-role">User</div>
+      </div>
+    </div>
+    <form th:action="@{/logout}" method="post">
+      <button type="submit" class="btn-logout"><i class="fa fa-right-from-bracket"></i> Logout</button>
+    </form>
+  </div>
+</aside>
+<main class="main-content">
+  <div class="topbar">
+    <h1 class="page-title" th:text="${pageTitle}">Page</h1>
+    <div class="topbar-right">
+      <span sec:authorize="hasRole('CUSTOMER')" class="wallet-chip">
+        <i class="fa fa-wallet"></i>
+        ₹<span th:text="${user != null ? #numbers.formatDecimal(user.walletBalance,1,2) : '0.00'}">0.00</span>
+      </span>
+    </div>
+  </div>
+  <div class="content-body">
+    <div th:if="${success}" class="alert alert-success"><i class="fa fa-circle-check"></i> <span th:text="${success}"></span></div>
+    <div th:if="${error}"   class="alert alert-error"><i class="fa fa-circle-xmark"></i> <span th:text="${error}"></span></div>
+    <div th:replace="${content}">Content</div>
+  </div>
+</main>
+<script th:src="@{/js/main.js}"></script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{this :: content}, 'Inventory')}">
+<body>
+<div th:fragment="content">
+
+  <div th:if="${!#lists.isEmpty(lowStock)}" class="alert alert-error">
+    <i class="fa fa-triangle-exclamation"></i>
+    <strong th:text="${lowStock.size()}"></strong> ingredient(s) are running low!
+    <span th:each="i : ${lowStock}" th:text="${i.name + ' (' + #numbers.formatDecimal(i.quantityInStock,1,1) + i.unit + ') '}" style="margin-left:6px;"></span>
+  </div>
+
+  <div class="card-header-standalone">
+    <h2>Ingredients &amp; Stock</h2>
+    <button class="btn btn-primary" onclick="openModal('addIngModal')"><i class="fa fa-plus"></i> Add Ingredient</button>
+  </div>
+
+  <div class="table-wrap card">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Name</th><th>Stock</th><th>Threshold</th><th>Unit</th><th>Cost/Unit</th><th>Status</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        <tr th:each="ing : ${ingredients}">
+          <td th:text="${ing.id}"></td>
+          <td th:text="${ing.name}"></td>
+          <td>
+            <div class="stock-bar-wrap">
+              <div class="stock-bar">
+                <div class="stock-fill"
+                     th:style="'width:' + ${ing.quantityInStock > 0 ? T(Math).min(100, ing.quantityInStock / (ing.lowStockThreshold * 3) * 100) : 0} + '%;background:' + ${ing.isLowStock() ? '#ef4444' : '#22c55e'}"></div>
+              </div>
+              <span th:text="${#numbers.formatDecimal(ing.quantityInStock,1,1) + ' ' + ing.unit}"></span>
+            </div>
+          </td>
+          <td th:text="${#numbers.formatDecimal(ing.lowStockThreshold,1,1) + ' ' + ing.unit}"></td>
+          <td th:text="${ing.unit}"></td>
+          <td th:text="${ing.costPerUnit != null ? '₹' + ing.costPerUnit : '-'}"></td>
+          <td>
+            <span th:if="${ing.isLowStock()}" class="badge badge-danger">Low Stock</span>
+            <span th:if="${!ing.isLowStock()}" class="badge badge-success">OK</span>
+          </td>
+          <td class="actions-cell">
+            <button class="btn btn-sm btn-primary"
+                    th:onclick="'openRestockModal(' + ${ing.id} + ', \'' + ${ing.name} + '\', ' + ${ing.quantityInStock} + ', \'' + ${ing.unit} + '\')'">
+              <i class="fa fa-plus"></i> Restock
+            </button>
+            <form th:action="@{/admin/inventory/{id}/delete(id=${ing.id})}" method="post" style="display:inline;"
+                  onsubmit="return confirm('Delete ingredient?')">
+              <button type="submit" class="btn btn-sm btn-danger"><i class="fa fa-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(ingredients)}">
+          <td colspan="8" class="empty-cell">No ingredients yet.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Add Ingredient Modal -->
+  <div id="addIngModal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+      <div class="modal-header"><h3>Add Ingredient</h3><button onclick="closeModal('addIngModal')" class="modal-close">&times;</button></div>
+      <form th:action="@{/admin/inventory/add}" method="post">
+        <div class="form-row">
+          <div class="form-group"><label>Name *</label><input type="text" name="name" required/></div>
+          <div class="form-group"><label>Unit *</label>
+            <select name="unit" class="form-select"><option>g</option><option>ml</option><option>kg</option><option>L</option><option>pcs</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Initial Stock *</label><input type="number" name="quantityInStock" step="0.01" min="0" required/></div>
+          <div class="form-group"><label>Low Stock Threshold *</label><input type="number" name="lowStockThreshold" step="0.01" min="0" required/></div>
+        </div>
+        <div class="form-group"><label>Cost per Unit (₹)</label><input type="number" name="costPerUnit" step="0.01" min="0"/></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('addIngModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Ingredient</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Restock Modal -->
+  <div id="restockModal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+      <div class="modal-header"><h3>Restock: <span id="restockName"></span></h3><button onclick="closeModal('restockModal')" class="modal-close">&times;</button></div>
+      <form id="restockForm" method="post">
+        <div class="form-group"><label>Current Stock</label><input type="text" id="restockCurrent" readonly/></div>
+        <div class="form-group"><label>Add Amount (<span id="restockUnit"></span>)</label><input type="number" name="amount" step="0.01" min="0.01" required/></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('restockModal')">Cancel</button>
+          <button type="submit" class="btn btn-success"><i class="fa fa-plus"></i> Restock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function openRestockModal(id, name, current, unit) {
+      document.getElementById('restockName').textContent    = name;
+      document.getElementById('restockCurrent').value       = current + ' ' + unit;
+      document.getElementById('restockUnit').textContent    = unit;
+      document.getElementById('restockForm').action         = '/admin/inventory/' + id + '/restock';
+      openModal('restockModal');
+    }
+  </script>
+</div>
+</body>
+</html>

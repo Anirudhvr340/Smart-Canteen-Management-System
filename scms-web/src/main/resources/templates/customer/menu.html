@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{this :: content}, 'Browse Menu')}">
+<body>
+<div th:fragment="content">
+
+  <!-- Search + filters -->
+  <div class="search-bar-wrap">
+    <form th:action="@{/customer/menu}" method="get" class="search-form">
+      <div class="input-icon search-input">
+        <i class="fa fa-search"></i>
+        <input type="text" name="search" th:value="${search}" placeholder="Search dishes..."/>
+      </div>
+      <button type="submit" class="btn btn-outline">Search</button>
+    </form>
+    <div class="category-chips">
+      <a th:href="@{/customer/menu}" th:classappend="${category == null ? 'chip active' : 'chip'}">All</a>
+      <a th:each="cat : ${categories}"
+         th:href="@{/customer/menu(category=${cat})}"
+         th:classappend="${cat == category ? 'chip active' : 'chip'}"
+         th:text="${cat}">Category</a>
+    </div>
+  </div>
+
+  <!-- Order form -->
+  <form th:action="@{/customer/order/place}" method="post" id="orderForm">
+    <div class="menu-grid">
+      <div class="menu-card" th:each="item : ${items}" th:classappend="${!item.available ? 'unavailable' : ''}">
+        <div class="menu-card-top">
+          <div class="menu-cat-tag" th:text="${item.category}"></div>
+          <div th:if="${!item.available}" class="unavail-badge">Unavailable</div>
+          <div th:if="${item.dietaryTags != null and !item.dietaryTags.isBlank()}" class="veg-dot"
+               th:classappend="${item.dietaryTags.contains('VEG') ? 'veg-dot-green' : 'veg-dot-red'}"></div>
+        </div>
+        <div class="menu-item-name" th:text="${item.name}"></div>
+        <div class="menu-item-desc" th:text="${item.description}"></div>
+        <div class="menu-item-meta">
+          <span th:if="${item.caloriesPerServing != null}"><i class="fa fa-fire-flame-simple"></i> <span th:text="${item.caloriesPerServing}"></span> kcal</span>
+          <span><i class="fa fa-clock"></i> <span th:text="${item.prepTimeMinutes}"></span> min</span>
+          <span th:if="${item.totalRatings > 0}">⭐ <span th:text="${#numbers.formatDecimal(item.averageRating,1,1)}"></span></span>
+        </div>
+        <div class="menu-item-tags" th:if="${item.dietaryTags != null and !item.dietaryTags.isBlank()}">
+          <span th:each="tag : ${item.dietaryTags.split(',')}" class="tag-chip" th:text="${tag}"></span>
+        </div>
+        <div class="menu-item-footer">
+          <div class="menu-item-price">₹<span th:text="${item.price}"></span></div>
+          <div class="qty-control" th:if="${item.available}">
+            <button type="button" class="qty-btn" onclick="changeQty(this, -1)">−</button>
+            <input type="number" th:name="'item_' + ${item.id}" th:data-price="${item.price}"
+                   value="0" min="0" max="10" class="qty-input" onchange="updateCheckout()"/>
+            <button type="button" class="qty-btn" onclick="changeQty(this, 1)">+</button>
+          </div>
+        </div>
+      </div>
+      <div th:if="${#lists.isEmpty(items)}" class="empty-card">
+        <i class="fa fa-bowl-food"></i><br/>No items found.
+      </div>
+    </div>
+
+    <!-- Checkout bar -->
+    <div class="checkout-bar" id="checkoutBar" style="display:none;">
+      <div class="checkout-summary">
+        <span class="checkout-count"><i class="fa fa-bag-shopping"></i> <span id="itemCount">0</span> item(s)</span>
+        <span class="checkout-total">₹<span id="orderTotal">0.00</span></span>
+      </div>
+      <div class="checkout-options">
+        <input type="text" name="couponCode" placeholder="Coupon code" class="coupon-input"/>
+        <select name="paymentMethod" class="form-select" style="width:auto;">
+          <option value="WALLET">💳 Wallet (₹<span th:text="${user.walletBalance}">0</span>)</option>
+          <option value="UPI">📱 UPI</option>
+          <option value="CARD">💳 Card</option>
+          <option value="CASH">💵 Cash</option>
+        </select>
+        <button type="submit" class="btn btn-primary"><i class="fa fa-check"></i> Place Order</button>
+      </div>
+    </div>
+  </form>
+
+  <script>
+    function changeQty(btn, delta) {
+      const input = btn.parentElement.querySelector('.qty-input');
+      let val = parseInt(input.value) || 0;
+      val = Math.max(0, Math.min(10, val + delta));
+      input.value = val;
+      updateCheckout();
+    }
+
+    function updateCheckout() {
+      let total = 0, count = 0;
+      document.querySelectorAll('.qty-input').forEach(inp => {
+        const qty = parseInt(inp.value) || 0;
+        const price = parseFloat(inp.getAttribute('data-price')) || 0;
+        if (qty > 0) {
+          total += qty * price;
+          count += qty;
+        }
+      });
+      document.getElementById('itemCount').textContent = count;
+      document.getElementById('orderTotal').textContent = total.toFixed(2);
+      document.getElementById('checkoutBar').style.display = count > 0 ? 'flex' : 'none';
+    }
+
+    // Initialize checkout on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      updateCheckout();
+    });
+  </script>
+</div>
+</body>
+</html>

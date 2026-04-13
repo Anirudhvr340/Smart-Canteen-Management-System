@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{this :: content}, 'My Wallet')}">
+<body>
+<div th:fragment="content">
+  <div class="wallet-page">
+    <div class="wallet-card-big">
+      <div class="wallet-brand"><i class="fa fa-wallet"></i> SCMS Wallet</div>
+      <div class="wallet-balance-label">Available Balance</div>
+      <div class="wallet-balance">₹<span th:text="${#numbers.formatDecimal(user.walletBalance,1,2)}">0.00</span></div>
+      <div class="wallet-user" th:text="${user.name}"></div>
+    </div>
+
+    <div class="card" style="max-width:400px;">
+      <div class="card-header"><h2>Add Funds</h2></div>
+      <form th:action="@{/customer/wallet/topup}" method="post">
+        <div class="topup-presets">
+          <button type="button" class="preset-btn" onclick="setAmount(100)">₹100</button>
+          <button type="button" class="preset-btn" onclick="setAmount(200)">₹200</button>
+          <button type="button" class="preset-btn" onclick="setAmount(500)">₹500</button>
+          <button type="button" class="preset-btn" onclick="setAmount(1000)">₹1000</button>
+        </div>
+        <div class="form-group" style="margin-top:12px;">
+          <label>Custom Amount (₹)</label>
+          <div class="input-icon"><i class="fa fa-indian-rupee-sign"></i><input type="number" name="amount" id="amountInput" min="1" step="1" placeholder="Enter amount" required/></div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full"><i class="fa fa-plus"></i> Add to Wallet</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function setAmount(val) { document.getElementById('amountInput').value = val; }
+  </script>
+</div>
+</body>
+</html>

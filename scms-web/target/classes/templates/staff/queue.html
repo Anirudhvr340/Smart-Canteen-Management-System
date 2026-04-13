@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{this :: content}, 'Kitchen Queue')}">
+<body>
+<div th:fragment="content">
+
+  <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px;">
+    <div class="stat-card orange"><div class="stat-icon"><i class="fa fa-fire"></i></div><div class="stat-info"><div class="stat-label">Active Orders</div><div class="stat-value" th:text="${activeOrders.size()}"></div></div></div>
+    <div class="stat-card blue"><div class="stat-icon"><i class="fa fa-bell"></i></div><div class="stat-info"><div class="stat-label">Ready for Pickup</div><div class="stat-value" th:text="${readyOrders.size()}"></div></div></div>
+    <div class="stat-card green"><div class="stat-icon"><i class="fa fa-check"></i></div><div class="stat-info"><div class="stat-label">Completed Today</div><div class="stat-value" th:text="${todayCompleted}"></div></div></div>
+  </div>
+
+  <!-- Active Orders -->
+  <div class="card">
+    <div class="card-header"><h2><i class="fa fa-fire" style="color:#f59e0b;"></i> Active Orders</h2></div>
+    <div th:if="${#lists.isEmpty(activeOrders)}" class="empty-state"><i class="fa fa-check-circle" style="color:#22c55e;font-size:48px;"></i><p>No active orders — all caught up!</p></div>
+    <div class="queue-grid" th:if="${!#lists.isEmpty(activeOrders)}">
+      <div class="queue-card" th:each="o : ${activeOrders}">
+        <div class="queue-card-header">
+          <span class="queue-order-id">#<span th:text="${o.id}"></span></span>
+          <span class="badge" th:classappend="'badge-' + ${o.status.name().toLowerCase()}" th:text="${o.status}"></span>
+        </div>
+        <div class="queue-customer"><i class="fa fa-user"></i> <span th:text="${o.customer.name}"></span></div>
+        <div class="queue-items">
+          <div th:each="item : ${o.items}" class="queue-item-row">
+            <span class="qi-qty" th:text="${item.quantity + 'x'}"></span>
+            <span class="qi-name" th:text="${item.menuItem.name}"></span>
+            <span th:if="${item.specialInstructions != null and !item.specialInstructions.isBlank()}"
+                  class="qi-note" th:text="'(' + ${item.specialInstructions} + ')'"></span>
+          </div>
+        </div>
+        <div class="queue-meta">
+          <span><i class="fa fa-clock"></i> <span th:text="${#temporals.format(o.createdAt,'HH:mm')}"></span></span>
+          <span th:if="${o.scheduledPickupTime != null}"><i class="fa fa-flag-checkered"></i> Pickup: <span th:text="${#temporals.format(o.scheduledPickupTime,'HH:mm')}"></span></span>
+        </div>
+        <div class="queue-actions">
+          <form th:action="@{/staff/order/{id}/status(id=${o.id})}" method="post" style="display:inline;">
+            <input type="hidden" name="status" th:value="${o.status.name() == 'CONFIRMED' ? 'PREPARING' : 'READY'}"/>
+            <button type="submit" class="btn btn-primary btn-full">
+              <i th:class="${o.status.name() == 'CONFIRMED' ? 'fa fa-fire' : 'fa fa-bell'}"></i>
+              <span th:text="${o.status.name() == 'CONFIRMED' ? 'Start Preparing' : 'Mark Ready'}"></span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ready for Pickup -->
+  <div class="card" th:if="${!#lists.isEmpty(readyOrders)}">
+    <div class="card-header"><h2><i class="fa fa-bell" style="color:#14b8a6;"></i> Ready for Pickup</h2></div>
+    <div class="queue-grid">
+      <div class="queue-card queue-card-ready" th:each="o : ${readyOrders}">
+        <div class="queue-card-header">
+          <span class="queue-order-id">#<span th:text="${o.id}"></span></span>
+          <span class="badge badge-ready">READY</span>
+        </div>
+        <div class="queue-customer"><i class="fa fa-user"></i> <span th:text="${o.customer.name}"></span></div>
+        <div class="queue-items">
+          <div th:each="item : ${o.items}" class="queue-item-row">
+            <span class="qi-qty" th:text="${item.quantity + 'x'}"></span>
+            <span class="qi-name" th:text="${item.menuItem.name}"></span>
+          </div>
+        </div>
+        <div class="queue-actions">
+          <form th:action="@{/staff/order/{id}/status(id=${o.id})}" method="post">
+            <input type="hidden" name="status" value="COMPLETED"/>
+            <button type="submit" class="btn btn-success btn-full"><i class="fa fa-check"></i> Mark Collected</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Auto-refresh queue every 30 seconds
+    setTimeout(() => location.reload(), 30000);
+  </script>
+</div>
+</body>
+</html>

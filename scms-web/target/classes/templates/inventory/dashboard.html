@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{this :: content}, 'Inventory Dashboard')}">
+<body>
+<div th:fragment="content">
+  <div th:if="${!#lists.isEmpty(lowStock)}" class="alert alert-error">
+    <i class="fa fa-triangle-exclamation"></i> <strong th:text="${lowStock.size()}"></strong> ingredient(s) need restocking!
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>Stock Levels</h2></div>
+    <div th:each="ing : ${ingredients}" class="stock-row">
+      <div class="stock-name" th:text="${ing.name}"></div>
+      <div class="stock-bar-wrap" style="flex:1;">
+        <div class="stock-bar" style="height:10px;background:#1e293b;border-radius:5px;">
+          <div class="stock-fill" style="height:100%;border-radius:5px;transition:width 0.3s;"
+               th:style="'width:' + ${ing.quantityInStock > 0 ? T(Math).min(100, ing.quantityInStock / (ing.lowStockThreshold * 4) * 100) : 0} + '%;background:' + ${ing.isLowStock() ? '#ef4444' : '#22c55e'}"></div>
+        </div>
+      </div>
+      <div class="stock-qty" th:text="${#numbers.formatDecimal(ing.quantityInStock,1,1) + ' / ' + #numbers.formatDecimal(ing.lowStockThreshold,1,1) + ' ' + ing.unit}"></div>
+      <span th:if="${ing.isLowStock()}" class="badge badge-danger">Low</span>
+      <span th:if="${!ing.isLowStock()}" class="badge badge-success">OK</span>
+      <form th:action="@{/inventory/{id}/restock(id=${ing.id})}" method="post" style="display:flex;gap:6px;align-items:center;">
+        <input type="number" name="amount" placeholder="Amount" min="1" step="0.01" style="width:90px;" class="form-input-sm" required/>
+        <button type="submit" class="btn btn-sm btn-primary"><i class="fa fa-plus"></i></button>
+      </form>
+    </div>
+  </div>
+</div>
+</body>
+</html>

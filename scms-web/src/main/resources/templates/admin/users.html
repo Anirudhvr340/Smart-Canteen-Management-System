@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{this :: content}, 'Users')}">
+<body>
+<div th:fragment="content">
+  <div class="card-header-standalone"><h2>System Users</h2><a th:href="@{/register}" class="btn btn-primary"><i class="fa fa-user-plus"></i> Add User</a></div>
+  <div class="table-wrap card">
+    <table>
+      <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Role</th><th>Wallet</th><th>Last Login</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr th:each="u : ${users}">
+          <td th:text="${u.id}"></td>
+          <td th:text="${u.name}"></td>
+          <td th:text="${u.email}"></td>
+          <td><span class="badge badge-info" th:text="${u.role}"></span></td>
+          <td th:text="'₹' + ${#numbers.formatDecimal(u.walletBalance,1,2)}"></td>
+          <td th:text="${u.lastLogin != null ? #temporals.format(u.lastLogin,'dd MMM HH:mm') : 'Never'}"></td>
+          <td><span th:if="${u.active}" class="badge badge-success">Active</span><span th:if="${!u.active}" class="badge badge-danger">Inactive</span></td>
+          <td>
+            <form th:action="@{/admin/users/{id}/toggle(id=${u.id})}" method="post" style="display:inline;">
+              <button type="submit" class="btn btn-sm btn-outline" th:text="${u.active ? 'Deactivate' : 'Activate'}"></button>
+            </form>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{this :: content}, 'Coupons')}">
+<body>
+<div th:fragment="content">
+  <div class="card-header-standalone">
+    <h2>Discount Coupons</h2>
+    <button class="btn btn-primary" onclick="openModal('addCouponModal')"><i class="fa fa-plus"></i> New Coupon</button>
+  </div>
+  <div class="table-wrap card">
+    <table>
+      <thead><tr><th>Code</th><th>Type</th><th>Value</th><th>Min Order</th><th>Max Discount</th><th>Used/Limit</th><th>Expires</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr th:each="c : ${coupons}">
+          <td><strong th:text="${c.code}"></strong></td>
+          <td th:text="${c.type}"></td>
+          <td th:text="${c.type.name() == 'PERCENTAGE' ? c.value + '%' : '₹' + c.value}"></td>
+          <td th:text="'₹' + ${c.minOrderValue}"></td>
+          <td th:text="'₹' + ${c.maxDiscount}"></td>
+          <td th:text="${c.usedCount + '/' + c.usageLimit}"></td>
+          <td th:text="${#temporals.format(c.expiresAt,'dd MMM yyyy')}"></td>
+          <td>
+            <span th:if="${c.active and c.expiresAt.isAfter(#temporals.createNow())}" class="badge badge-success">Active</span>
+            <span th:if="${!c.active}" class="badge badge-danger">Inactive</span>
+            <span th:if="${c.active and c.expiresAt.isBefore(#temporals.createNow())}" class="badge badge-warning">Expired</span>
+          </td>
+          <td>
+            <form th:action="@{/admin/coupons/{id}/deactivate(id=${c.id})}" method="post" style="display:inline;">
+              <button type="submit" class="btn btn-sm btn-danger" th:if="${c.active}">Deactivate</button>
+            </form>
+          </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(coupons)}"><td colspan="9" class="empty-cell">No coupons yet.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Add Coupon Modal -->
+  <div id="addCouponModal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+      <div class="modal-header"><h3>Create Coupon</h3><button onclick="closeModal('addCouponModal')" class="modal-close">&times;</button></div>
+      <form th:action="@{/admin/coupons/add}" method="post">
+        <div class="form-row">
+          <div class="form-group"><label>Code *</label><input type="text" name="code" placeholder="SAVE20" required style="text-transform:uppercase;"/></div>
+          <div class="form-group"><label>Type *</label>
+            <select name="type" class="form-select"><option value="FLAT_AMOUNT">Flat Amount</option><option value="PERCENTAGE">Percentage</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Value (₹ or %)</label><input type="number" name="value" step="0.01" min="0" required/></div>
+          <div class="form-group"><label>Min Order Value (₹)</label><input type="number" name="minOrderValue" step="0.01" min="0" required/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Max Discount (₹)</label><input type="number" name="maxDiscount" step="0.01" min="0" required/></div>
+          <div class="form-group"><label>Usage Limit</label><input type="number" name="usageLimit" min="1" value="100" required/></div>
+        </div>
+        <div class="form-group"><label>Expires in (days)</label><input type="number" name="expiryDays" min="1" value="30" required/></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('addCouponModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Coupon</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+</body>
+</html>

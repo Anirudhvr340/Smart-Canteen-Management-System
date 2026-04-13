@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{this :: content}, 'All Orders')}">
+<body>
+<div th:fragment="content">
+  <div class="card-header-standalone"><h2>All Orders</h2></div>
+  <div class="table-wrap card">
+    <table>
+      <thead><tr><th>#</th><th>Customer</th><th>Items</th><th>Coupon</th><th>Discount</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+      <tbody>
+        <tr th:each="o : ${orders}">
+          <td th:text="${o.id}"></td>
+          <td th:text="${o.customer.name}"></td>
+          <td>
+            <span th:each="oi : ${o.items}" th:text="${oi.quantity + 'x ' + oi.menuItem.name}" style="display:block;font-size:12px;color:#64748b;"></span>
+          </td>
+          <td th:text="${o.couponCode ?: '-'}"></td>
+          <td th:text="${o.discountApplied > 0 ? '-₹' + #numbers.formatDecimal(o.discountApplied,1,2) : '-'}"></td>
+          <td>₹<span th:text="${#numbers.formatDecimal(o.finalTotal,1,2)}"></span></td>
+          <td th:text="${o.paymentMethod}"></td>
+          <td><span class="badge" th:classappend="'badge-' + ${o.status.name().toLowerCase()}" th:text="${o.status}"></span></td>
+          <td th:text="${#temporals.format(o.createdAt,'dd MMM HH:mm')}"></td>
+          <td>
+            <form th:if="${o.status.name() == 'CONFIRMED' or o.status.name() == 'CREATED'}"
+                  th:action="@{/admin/orders/{id}/cancel(id=${o.id})}" method="post" style="display:inline;">
+              <input type="hidden" name="reason" value="Cancelled by admin"/>
+              <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Cancel order?')">
+                <i class="fa fa-ban"></i> Cancel
+              </button>
+            </form>
+          </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(orders)}"><td colspan="10" class="empty-cell">No orders yet.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

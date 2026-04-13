@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: layout(~{this :: content}, 'Admin Dashboard')}">
+<body>
+<div th:fragment="content">
+
+  <!-- Stat cards -->
+  <div class="stat-grid">
+    <div class="stat-card accent">
+      <div class="stat-icon"><i class="fa fa-indian-rupee-sign"></i></div>
+      <div class="stat-info">
+        <div class="stat-label">Today's Revenue</div>
+        <div class="stat-value">₹<span th:text="${#numbers.formatDecimal(todayRevenue,1,2)}">0</span></div>
+      </div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-icon"><i class="fa fa-chart-bar"></i></div>
+      <div class="stat-info">
+        <div class="stat-label">Month Revenue</div>
+        <div class="stat-value">₹<span th:text="${#numbers.formatDecimal(monthRevenue,1,2)}">0</span></div>
+      </div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-icon"><i class="fa fa-receipt"></i></div>
+      <div class="stat-info">
+        <div class="stat-label">Today's Orders</div>
+        <div class="stat-value" th:text="${todayOrders}">0</div>
+      </div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-icon"><i class="fa fa-fire"></i></div>
+      <div class="stat-info">
+        <div class="stat-label">Active Orders</div>
+        <div class="stat-value" th:text="${activeOrders}">0</div>
+      </div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-icon"><i class="fa fa-triangle-exclamation"></i></div>
+      <div class="stat-info">
+        <div class="stat-label">Low Stock Items</div>
+        <div class="stat-value" th:text="${lowStock}">0</div>
+      </div>
+    </div>
+    <div class="stat-card purple">
+      <div class="stat-icon"><i class="fa fa-ban"></i></div>
+      <div class="stat-info">
+        <div class="stat-label">Today Cancels</div>
+        <div class="stat-value" th:text="${todayCancels}">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts row -->
+  <div class="row-2">
+    <div class="card">
+      <div class="card-header">
+        <h2>Revenue — Last 7 Days</h2>
+      </div>
+      <canvas id="revenueChart" height="220"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <h2>Orders by Status</h2>
+      </div>
+      <canvas id="statusChart" height="220"></canvas>
+    </div>
+  </div>
+
+  <!-- Recent orders -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Recent Orders</h2>
+      <a th:href="@{/admin/orders}" class="btn btn-sm btn-outline">View All</a>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Customer</th><th>Items</th><th>Total</th>
+            <th>Payment</th><th>Status</th><th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="o : ${recentOrders}">
+            <td th:text="${o.id}"></td>
+            <td th:text="${o.customer.name}"></td>
+            <td th:text="${o.items.size() + ' item(s)'}"></td>
+            <td>₹<span th:text="${#numbers.formatDecimal(o.finalTotal,1,2)}"></span></td>
+            <td th:text="${o.paymentMethod}"></td>
+            <td><span class="badge" th:classappend="'badge-' + ${o.status.name().toLowerCase()}" th:text="${o.status}"></span></td>
+            <td th:text="${#temporals.format(o.createdAt,'dd MMM HH:mm')}"></td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(recentOrders)}">
+            <td colspan="7" class="empty-cell">No orders yet.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Quick links -->
+  <div class="quick-links">
+    <a th:href="@{/admin/menu}"      class="quick-link"><i class="fa fa-utensils"></i><span>Manage Menu</span></a>
+    <a th:href="@{/admin/inventory}" class="quick-link"><i class="fa fa-boxes-stacked"></i><span>Inventory</span></a>
+    <a th:href="@{/admin/coupons}"   class="quick-link"><i class="fa fa-ticket"></i><span>Coupons</span></a>
+    <a th:href="@{/admin/users}"     class="quick-link"><i class="fa fa-users"></i><span>Users</span></a>
+    <a th:href="@{/staff/queue}"     class="quick-link"><i class="fa fa-list-check"></i><span>Kitchen Queue</span></a>
+    <a th:href="@{/admin/feedback}"  class="quick-link"><i class="fa fa-star"></i><span>Feedback</span></a>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script th:inline="javascript">
+  const revData   = /*[[${revenueChart}]]*/ {};
+  const statData  = /*[[${statusChart}]]*/ {};
+
+  new Chart(document.getElementById('revenueChart'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(revData).map(d => d.slice(5)),
+      datasets: [{ label: 'Revenue (₹)', data: Object.values(revData),
+        backgroundColor: 'rgba(99,102,241,0.7)', borderRadius: 6 }]
+    },
+    options: { responsive:true, plugins:{legend:{display:false}},
+      scales:{ y:{ beginAtZero:true, ticks:{ callback: v=>'₹'+v } } } }
+  });
+
+  const statusColors = {
+    CREATED:'#94a3b8',CONFIRMED:'#3b82f6',PREPARING:'#f59e0b',
+    READY:'#14b8a6',COMPLETED:'#22c55e',CANCELLED:'#ef4444',REFUNDED:'#a78bfa'
+  };
+  new Chart(document.getElementById('statusChart'), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(statData),
+      datasets: [{ data: Object.values(statData),
+        backgroundColor: Object.keys(statData).map(k => statusColors[k]||'#94a3b8'),
+        borderWidth: 0 }]
+    },
+    options: { responsive:true, plugins:{ legend:{ position:'bottom' } } }
+  });
+</script>
+</body>
+</html>

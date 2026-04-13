@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{this :: content}, 'Feedback')}">
+<body>
+<div th:fragment="content">
+  <div class="card-header-standalone"><h2>Customer Feedback</h2></div>
+  <div class="table-wrap card">
+    <table>
+      <thead><tr><th>#</th><th>Customer</th><th>Order</th><th>Item</th><th>Rating</th><th>Comment</th><th>Date</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr th:each="f : ${feedbacks}" th:classappend="${f.flagged ? 'row-flagged' : ''}">
+          <td th:text="${f.id}"></td>
+          <td th:text="${f.customer.name}"></td>
+          <td th:text="'#' + ${f.order.id}"></td>
+          <td th:text="${f.menuItem != null ? f.menuItem.name : 'Order-level'}"></td>
+          <td>
+            <span th:text="${#numbers.formatDecimal(f.rating,1,1)}"></span> ⭐
+          </td>
+          <td th:text="${f.comment}"></td>
+          <td th:text="${#temporals.format(f.submittedAt,'dd MMM HH:mm')}"></td>
+          <td>
+            <form th:action="@{/admin/feedback/{id}/flag(id=${f.id})}" method="post" style="display:inline;">
+              <button type="submit" class="btn btn-sm btn-danger" th:if="${!f.flagged}"><i class="fa fa-flag"></i> Flag</button>
+            </form>
+            <span th:if="${f.flagged}" class="badge badge-danger">Flagged</span>
+          </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(feedbacks)}"><td colspan="8" class="empty-cell">No feedback yet.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>
