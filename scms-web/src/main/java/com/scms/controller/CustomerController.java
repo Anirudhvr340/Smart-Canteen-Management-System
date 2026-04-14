@@ -10,7 +10,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.time.LocalDateTime;
 import java.util.*;
 
 @Controller
@@ -22,7 +21,6 @@ public class CustomerController {
     private final MenuService menuService;
     private final OrderService orderService;
     private final FeedbackService feedbackService;
-    private final CouponService couponService;
 
     private User currentUser(Authentication auth) {
         return userService.getByEmail(auth.getName());

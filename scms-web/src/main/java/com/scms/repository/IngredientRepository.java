@@ -7,6 +7,6 @@ import java.util.List;
 
 @Repository
 public interface IngredientRepository extends JpaRepository<Ingredient, Long> {
-    @Query("SELECT i FROM Ingredient i WHERE i.quantityInStock <= i.lowStockThreshold")
+    @Query("SELECT i FROM Ingredient i WHERE (i.quantityInStock - i.reservedQuantity) <= i.lowStockThreshold")
     List<Ingredient> findLowStock();
 }

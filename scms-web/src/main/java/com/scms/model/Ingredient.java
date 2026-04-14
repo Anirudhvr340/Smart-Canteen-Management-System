@@ -17,6 +17,10 @@ public class Ingredient {
     @Column(nullable = false)
     private Double quantityInStock;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private Double reservedQuantity = 0.0;
+
     @Column(nullable = false)
     private Double lowStockThreshold;
 
@@ -26,13 +30,34 @@ public class Ingredient {
     private Double costPerUnit;
 
     public boolean isLowStock() {
-        return quantityInStock <= lowStockThreshold;
+        return getAvailableQuantity() <= lowStockThreshold;
+    }
+
+    public double getAvailableQuantity() {
+        return quantityInStock - (reservedQuantity != null ? reservedQuantity : 0.0);
     }
 
     public void deduct(double amount) {
         if (amount > quantityInStock)
             throw new IllegalStateException("Insufficient stock for: " + name);
         this.quantityInStock -= amount;
+    }
+
+    public void reserve(double amount) {
+        if (amount > getAvailableQuantity())
+            throw new IllegalStateException("Insufficient available stock for: " + name);
+        this.reservedQuantity += amount;
+    }
+
+    public void releaseReserved(double amount) {
+        this.reservedQuantity = Math.max(0.0, this.reservedQuantity - amount);
+    }
+
+    public void consumeReserved(double amount) {
+        if (amount > reservedQuantity)
+            throw new IllegalStateException("Reserved stock mismatch for: " + name);
+        this.reservedQuantity -= amount;
+        deduct(amount);
     }
 
     public void restock(double amount) {

@@ -1,6 +1,5 @@
 package com.scms.controller;
 
-import com.scms.model.User;
 import com.scms.model.enums.Role;
 import com.scms.service.UserService;
 import lombok.RequiredArgsConstructor;

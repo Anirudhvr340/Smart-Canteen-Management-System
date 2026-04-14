@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -43,15 +44,57 @@ public class InventoryService {
     }
 
     @Transactional
-    public void deductForOrder(Order order) {
-        for (OrderItem oi : order.getItems()) {
-            MenuItem mi = oi.getMenuItem();
-            for (Map.Entry<Long, Double> entry : mi.getIngredientQuantities().entrySet()) {
-                Ingredient ing = getById(entry.getKey());
-                ing.deduct(entry.getValue() * oi.getQuantity());
-                ingredientRepo.save(ing);
+    public void reserveForOrder(Order order) {
+        Map<Long, Double> required = getRequiredIngredients(order);
+
+        for (Map.Entry<Long, Double> entry : required.entrySet()) {
+            Ingredient ing = getById(entry.getKey());
+            if (ing.getAvailableQuantity() < entry.getValue()) {
+                throw new IllegalStateException("Insufficient stock for " + ing.getName() + ".");
             }
         }
+
+        for (Map.Entry<Long, Double> entry : required.entrySet()) {
+            Ingredient ing = getById(entry.getKey());
+            ing.reserve(entry.getValue());
+            ingredientRepo.save(ing);
+        }
+        refreshMenuAvailability();
+    }
+
+    @Transactional
+    public void consumeReservedForOrder(Order order) {
+        if (!Boolean.TRUE.equals(order.getInventoryReserved())) {
+            throw new IllegalStateException("Inventory was not reserved for this order.");
+        }
+        if (Boolean.TRUE.equals(order.getInventoryConsumed())) {
+            return;
+        }
+
+        Map<Long, Double> required = getRequiredIngredients(order);
+        for (Map.Entry<Long, Double> entry : required.entrySet()) {
+            Ingredient ing = getById(entry.getKey());
+            ing.consumeReserved(entry.getValue());
+            ingredientRepo.save(ing);
+        }
+        order.setInventoryReserved(false);
+        order.setInventoryConsumed(true);
+        refreshMenuAvailability();
+    }
+
+    @Transactional
+    public void releaseReservationForOrder(Order order) {
+        if (!Boolean.TRUE.equals(order.getInventoryReserved()) || Boolean.TRUE.equals(order.getInventoryConsumed())) {
+            return;
+        }
+
+        Map<Long, Double> required = getRequiredIngredients(order);
+        for (Map.Entry<Long, Double> entry : required.entrySet()) {
+            Ingredient ing = getById(entry.getKey());
+            ing.releaseReserved(entry.getValue());
+            ingredientRepo.save(ing);
+        }
+        order.setInventoryReserved(false);
         refreshMenuAvailability();
     }
 
@@ -59,7 +102,7 @@ public class InventoryService {
     public void refreshMenuAvailability() {
         List<Ingredient> allIngredients = ingredientRepo.findAll();
         Map<Long, Double> stockMap = new java.util.HashMap<>();
-        allIngredients.forEach(i -> stockMap.put(i.getId(), i.getQuantityInStock()));
+        allIngredients.forEach(i -> stockMap.put(i.getId(), i.getAvailableQuantity()));
 
         for (MenuItem item : menuItemRepo.findAll()) {
             boolean canMake = true;
@@ -76,4 +119,16 @@ public class InventoryService {
 
     @Transactional
     public void delete(Long id) { ingredientRepo.deleteById(id); }
+
+    private Map<Long, Double> getRequiredIngredients(Order order) {
+        Map<Long, Double> required = new HashMap<>();
+        for (OrderItem oi : order.getItems()) {
+            MenuItem mi = oi.getMenuItem();
+            for (Map.Entry<Long, Double> entry : mi.getIngredientQuantities().entrySet()) {
+                double qty = entry.getValue() * oi.getQuantity();
+                required.merge(entry.getKey(), qty, Double::sum);
+            }
+        }
+        return required;
+    }
 }

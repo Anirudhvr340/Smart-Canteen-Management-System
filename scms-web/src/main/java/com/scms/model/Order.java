@@ -49,6 +49,12 @@ public class Order {
     @Builder.Default
     private Double finalTotal = 0.0;
 
+    @Builder.Default
+    private Boolean inventoryReserved = false;
+
+    @Builder.Default
+    private Boolean inventoryConsumed = false;
+
     public double getRawTotal() {
         return items.stream().mapToDouble(i -> i.getPriceAtOrder() * i.getQuantity()).sum();
     }

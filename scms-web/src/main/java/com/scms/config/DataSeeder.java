@@ -42,6 +42,9 @@ public class DataSeeder implements CommandLineRunner {
         Ingredient chicken = save(ing("Chicken",      2000, 300, "g",  0.60));
         Ingredient rice    = save(ing("Basmati Rice", 5000, 500, "g",  0.03));
         Ingredient oil     = save(ing("Cooking Oil",  2000, 200, "ml", 0.06));
+        Ingredient tea     = save(ing("Tea Leaves",   1200, 150, "g",  0.12));
+        Ingredient sugar   = save(ing("Sugar",        3000, 300, "g",  0.02));
+        Ingredient khoya   = save(ing("Khoya",        1200, 180, "g",  0.35));
 
         // ── Menu items ───────────────────────────────────────────────────────
         MenuItem pizza = menuItemRepo.save(MenuItem.builder()
@@ -80,15 +83,41 @@ public class DataSeeder implements CommandLineRunner {
         biryani.getIngredientQuantities().put(oil.getId(), 25.0);
         menuItemRepo.save(biryani);
 
-        menuItemRepo.save(MenuItem.builder()
+        MenuItem chai = menuItemRepo.save(MenuItem.builder()
                 .name("Masala Chai").description("Spiced Indian tea with milk")
                 .category("Beverages").price(30.0).prepTimeMinutes(5)
                 .caloriesPerServing(90).dietaryTags("VEG").build());
+        chai.getIngredientQuantities().put(milk.getId(), 120.0);
+        chai.getIngredientQuantities().put(tea.getId(), 5.0);
+        chai.getIngredientQuantities().put(sugar.getId(), 10.0);
+        menuItemRepo.save(chai);
 
-        menuItemRepo.save(MenuItem.builder()
+        MenuItem gulab = menuItemRepo.save(MenuItem.builder()
                 .name("Gulab Jamun").description("Soft milk-solid dumplings in sugar syrup")
                 .category("Desserts").price(60.0).prepTimeMinutes(3)
                 .caloriesPerServing(310).dietaryTags("VEG").build());
+        gulab.getIngredientQuantities().put(khoya.getId(), 60.0);
+        gulab.getIngredientQuantities().put(sugar.getId(), 35.0);
+        gulab.getIngredientQuantities().put(oil.getId(), 15.0);
+        menuItemRepo.save(gulab);
+
+        MenuItem soup = menuItemRepo.save(MenuItem.builder()
+                .name("Tomato Soup").description("Smooth tomato soup with herbs")
+                .category("Starters").price(90.0).prepTimeMinutes(7)
+                .caloriesPerServing(130).dietaryTags("VEG,GLUTEN_FREE").build());
+        soup.getIngredientQuantities().put(tomato.getId(), 120.0);
+        soup.getIngredientQuantities().put(oil.getId(), 8.0);
+        soup.getIngredientQuantities().put(sugar.getId(), 4.0);
+        menuItemRepo.save(soup);
+
+        MenuItem friedRice = menuItemRepo.save(MenuItem.builder()
+                .name("Veg Fried Rice").description("Wok tossed basmati rice with seasoning")
+                .category("Main Course").price(170.0).prepTimeMinutes(12)
+                .caloriesPerServing(430).dietaryTags("VEG").build());
+        friedRice.getIngredientQuantities().put(rice.getId(), 180.0);
+        friedRice.getIngredientQuantities().put(oil.getId(), 16.0);
+        friedRice.getIngredientQuantities().put(tomato.getId(), 25.0);
+        menuItemRepo.save(friedRice);
 
         // ── Coupons ──────────────────────────────────────────────────────────
         couponRepo.save(Coupon.builder()

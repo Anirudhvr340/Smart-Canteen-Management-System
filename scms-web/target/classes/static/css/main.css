@@ -186,7 +186,8 @@ tbody tr:hover td{background:rgba(255,255,255,0.02);}
 .menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:80px;}
 .menu-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;transition:all 0.18s;}
 .menu-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow);}
-.menu-card.unavailable{opacity:0.45;}
+.menu-card.unavailable{opacity:0.45;cursor:not-allowed;}
+.menu-card.unavailable:hover{border-color:var(--border);transform:none;box-shadow:none;}
 .menu-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
 .menu-cat-tag{font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--accent2);font-weight:600;}
 .unavail-badge{font-size:10px;background:rgba(239,68,68,0.15);color:var(--red);padding:2px 8px;border-radius:10px;}

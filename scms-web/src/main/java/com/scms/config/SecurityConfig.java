@@ -1,6 +1,5 @@
 package com.scms.config;
 
-import com.scms.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.*;
 import org.springframework.security.authentication.*;

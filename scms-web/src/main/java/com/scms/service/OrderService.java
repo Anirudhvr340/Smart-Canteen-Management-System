@@ -51,6 +51,10 @@ public class OrderService {
             order.getItems().add(oi);
         }
 
+        // Reserve stock immediately to prevent overselling while order is queued.
+        inventoryService.reserveForOrder(order);
+        order.setInventoryReserved(true);
+
         // Apply coupon
         double rawTotal = order.getRawTotal();
         double discount = 0;
@@ -71,12 +75,7 @@ public class OrderService {
 
         order.setPaid(paymentMethod != PaymentMethod.CASH);
         order.transitionTo(OrderStatus.CONFIRMED);
-        Order saved = orderRepo.save(order);
-
-        // Deduct stock
-        inventoryService.deductForOrder(saved);
-
-        return saved;
+        return orderRepo.save(order);
     }
 
     // ── Status transitions ───────────────────────────────────────────────────
@@ -85,6 +84,9 @@ public class OrderService {
     public void updateStatus(Long orderId, OrderStatus newStatus) {
         Order order = getById(orderId);
         order.transitionTo(newStatus);
+        if (newStatus == OrderStatus.PREPARING) {
+            inventoryService.consumeReservedForOrder(order);
+        }
         orderRepo.save(order);
     }
 
@@ -93,6 +95,10 @@ public class OrderService {
         Order order = getById(orderId);
         order.setCancellationReason(reason);
         order.transitionTo(OrderStatus.CANCELLED);
+
+        if (Boolean.TRUE.equals(order.getInventoryReserved())) {
+            inventoryService.releaseReservationForOrder(order);
+        }
 
         // Refund wallet if paid by wallet
         if (Boolean.TRUE.equals(order.getPaid()) && order.getPaymentMethod() == PaymentMethod.WALLET) {
