@@ -55,6 +55,13 @@ public class Order {
     @Builder.Default
     private Boolean inventoryConsumed = false;
 
+    @Builder.Default
+    private Boolean customerCancelRequested = false;
+
+    private String customerCancelReason;
+
+    private String customerNotification;
+
     public double getRawTotal() {
         return items.stream().mapToDouble(i -> i.getPriceAtOrder() * i.getQuantity()).sum();
     }

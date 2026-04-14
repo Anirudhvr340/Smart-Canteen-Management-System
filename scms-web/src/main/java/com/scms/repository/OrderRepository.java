@@ -13,6 +13,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByCustomerIdOrderByCreatedAtDesc(Long customerId);
     List<Order> findByStatusInOrderByCreatedAtAsc(List<OrderStatus> statuses);
     List<Order> findByStatusOrderByCreatedAtAsc(OrderStatus status);
+    List<Order> findByCustomerCancelRequestedTrueOrderByCreatedAtAsc();
     long countByStatus(OrderStatus status);
 
     @Query("SELECT COALESCE(SUM(o.finalTotal), 0.0) FROM Order o WHERE o.paid = true AND o.createdAt >= :from AND o.createdAt < :to")

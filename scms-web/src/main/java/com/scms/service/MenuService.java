@@ -52,4 +52,18 @@ public class MenuService {
         item.getIngredientQuantities().put(ingredientId, qty);
         menuRepo.save(item);
     }
+
+    public List<MenuIngredientInfo> getIngredientInfo(Long itemId) {
+        return menuRepo.findIngredientRowsByMenuItemId(itemId)
+                .stream()
+                .map(row -> new MenuIngredientInfo(
+                        row.getId(),
+                        row.getName(),
+                        row.getUnit(),
+                        row.getQuantityPerServing()
+                ))
+                .toList();
+    }
+
+    public record MenuIngredientInfo(Long id, String name, String unit, Double quantityPerServing) {}
 }

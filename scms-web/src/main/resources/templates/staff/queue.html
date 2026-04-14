@@ -46,6 +46,54 @@
     </div>
   </div>
 
+  <!-- Customer Cancellation Requests -->
+  <div class="card" th:if="${cancelRequests != null and !#lists.isEmpty(cancelRequests)}">
+    <div class="card-header"><h2><i class="fa fa-ban" style="color:#ef4444;"></i> Customer Cancellation Requests</h2></div>
+    <div class="queue-grid">
+      <div class="queue-card" th:each="o : ${cancelRequests}">
+        <div class="queue-card-header">
+          <span class="queue-order-id">#<span th:text="${o.id}"></span></span>
+          <span class="badge badge-danger">Cancel Requested</span>
+        </div>
+        <div class="queue-customer"><i class="fa fa-user"></i> <span th:text="${o.customer.name}"></span></div>
+        <div class="queue-meta" th:if="${o.customerCancelReason != null and !o.customerCancelReason.isBlank()}">
+          <span><i class="fa fa-comment"></i> <span th:text="${o.customerCancelReason}"></span></span>
+        </div>
+          <form th:action="@{/staff/order/{id}/cancel-request/process(id=${o.id})}" method="post"
+            th:with="ingredients=${cancelRequestIngredients[o.id]}">
+          <div style="font-size:12px;color:#94a3b8;margin-bottom:8px;">
+            Select the ingredients and quantities that can be returned to inventory:
+          </div>
+          <div th:if="${o.inventoryConsumed == false}" style="font-size:12px;color:#f59e0b;margin-bottom:8px;">
+            This order has not been prepared yet. Any reserved ingredients will be fully released after approval.
+          </div>
+          <div th:if="${ingredients != null and !#lists.isEmpty(ingredients)}">
+            <div th:each="usage : ${ingredients}" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+              <input type="checkbox"
+                     th:name="'ingredientSelected_' + ${usage.ingredient.id}"
+                     checked="checked"/>
+              <span th:text="${usage.ingredient.name + ' (used: ' + #numbers.formatDecimal(usage.quantity,1,2) + ' ' + usage.ingredient.unit + ')'}"></span>
+              <input type="number"
+                     th:name="'returnQty_' + ${usage.ingredient.id}"
+                     th:value="${usage.quantity}"
+                     min="0"
+                     step="0.01"
+                     class="form-input-sm"
+                     style="width:100px;"/>
+            </div>
+          </div>
+          <div th:if="${ingredients == null or #lists.isEmpty(ingredients)}" style="font-size:12px;color:#94a3b8;margin-bottom:8px;">
+            No ingredient breakdown found for this order.
+          </div>
+          <input type="hidden" name="reason" value="Cancelled after customer request by staff review"/>
+          <button type="submit" class="btn btn-danger btn-full" style="margin-top:8px;">
+            <i class="fa fa-check"></i> Approve Cancellation
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Ready for Pickup -->
   <div class="card" th:if="${!#lists.isEmpty(readyOrders)}">
     <div class="card-header"><h2><i class="fa fa-bell" style="color:#14b8a6;"></i> Ready for Pickup</h2></div>

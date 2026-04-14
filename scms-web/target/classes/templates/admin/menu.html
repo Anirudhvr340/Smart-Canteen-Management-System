@@ -6,7 +6,7 @@
 
   <div class="card-header-standalone">
     <h2>Menu Items</h2>
-    <button class="btn btn-primary" onclick="openModal('addItemModal')">
+    <button class="btn btn-primary" onclick="openAddItemModal()">
       <i class="fa fa-plus"></i> Add Item
     </button>
   </div>
@@ -14,24 +14,42 @@
   <div class="table-wrap card">
     <table>
       <thead>
-        <tr><th>#</th><th>Name</th><th>Category</th><th>Price</th><th>Prep</th><th>Calories</th><th>Tags</th><th>Rating</th><th>Status</th><th>Actions</th></tr>
+        <tr>
+          <th>#</th><th>Name</th><th>Category</th><th>Price</th>
+          <th>Prep</th><th>Calories</th><th>Tags</th>
+          <th>Rating</th><th>Status</th><th>Actions</th>
+        </tr>
       </thead>
       <tbody>
         <tr th:each="item : ${items}">
           <td th:text="${item.id}"></td>
+
           <td>
-            <div class="item-name-cell" th:text="${item.name}"></div>
+            <div class="item-name-cell"
+                 th:text="${item.name}"
+                 th:attr="data-id=${item.id}, data-name=${item.name}"
+                 onclick="openItemIngredientsModal(this)"
+                 style="cursor:pointer; text-decoration:underline;"></div>
             <div class="item-desc-cell" th:text="${item.description}"></div>
           </td>
-          <td><span class="badge badge-info" th:text="${item.category}"></span></td>
+
+          <td>
+            <span class="badge badge-info" th:text="${item.category}"></span>
+          </td>
+
           <td>₹<span th:text="${item.price}"></span></td>
+
           <td th:text="${item.prepTimeMinutes + ' min'}"></td>
+
           <td th:text="${item.caloriesPerServing != null ? item.caloriesPerServing + ' kcal' : '-'}"></td>
+
           <td>
             <span th:each="tag : ${item.dietaryTags != null ? item.dietaryTags.split(',') : {}}"
-                  class="badge badge-success" style="margin:1px;" th:text="${tag}"></span>
+                  class="badge badge-success" style="margin:1px;"
+                  th:text="${tag}"></span>
             <span th:if="${item.dietaryTags == null or item.dietaryTags.isBlank()}">-</span>
           </td>
+
           <td>
             <span th:if="${item.totalRatings > 0}">
               ⭐ <span th:text="${#numbers.formatDecimal(item.averageRating,1,1)}"></span>
@@ -39,93 +57,438 @@
             </span>
             <span th:if="${item.totalRatings == 0}">No ratings</span>
           </td>
+
           <td>
             <span th:if="${item.available}" class="badge badge-success">Available</span>
             <span th:if="${!item.available}" class="badge badge-danger">Unavailable</span>
           </td>
+
           <td class="actions-cell">
+
+            <!-- Toggle -->
             <form th:action="@{/admin/menu/{id}/toggle(id=${item.id})}" method="post" style="display:inline;">
               <button type="submit" class="btn btn-sm btn-outline"
                       th:title="${item.available ? 'Disable' : 'Enable'}">
                 <i th:class="${item.available ? 'fa fa-eye-slash' : 'fa fa-eye'}"></i>
               </button>
             </form>
+
+            <!-- ✅ FIXED BUTTON -->
             <button class="btn btn-sm btn-outline"
-                    th:onclick="'openIngredientModal(' + ${item.id} + ', \'' + ${item.name} + '\')'">
+                    th:attr="data-id=${item.id}, data-name=${item.name}"
+                    onclick="openIngredientModal(this)">
               <i class="fa fa-link"></i>
             </button>
-            <form th:action="@{/admin/menu/{id}/delete(id=${item.id})}" method="post" style="display:inline;"
+
+            <!-- Edit -->
+            <button class="btn btn-sm btn-outline"
+                    th:attr="data-id=${item.id}"
+                    onclick="openEditItemModal(this)">
+              <i class="fa fa-pen"></i>
+            </button>
+
+            <!-- Delete -->
+            <form th:action="@{/admin/menu/{id}/delete(id=${item.id})}" method="post"
+                  style="display:inline;"
                   onsubmit="return confirm('Delete this item?')">
-              <button type="submit" class="btn btn-sm btn-danger"><i class="fa fa-trash"></i></button>
+              <button type="submit" class="btn btn-sm btn-danger">
+                <i class="fa fa-trash"></i>
+              </button>
             </form>
+
           </td>
         </tr>
+
         <tr th:if="${#lists.isEmpty(items)}">
           <td colspan="10" class="empty-cell">No menu items yet.</td>
         </tr>
+
       </tbody>
     </table>
+  </div>
+
+  <!-- View Ingredients Modal -->
+  <div id="itemIngredientsModal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Ingredients Used for <span id="itemIngredientsModalName"></span></h3>
+        <button onclick="closeModal('itemIngredientsModal')" class="modal-close">&times;</button>
+      </div>
+
+      <div id="itemIngredientsModalBody">
+        <div class="empty-cell" style="padding:8px 0;">Click a menu item name to load ingredients.</div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeModal('itemIngredientsModal')">Close</button>
+      </div>
+    </div>
   </div>
 
   <!-- Add Item Modal -->
   <div id="addItemModal" class="modal-overlay" style="display:none;">
     <div class="modal">
-      <div class="modal-header"><h3>Add Menu Item</h3><button onclick="closeModal('addItemModal')" class="modal-close">&times;</button></div>
-      <form th:action="@{/admin/menu/add}" method="post">
+      <div class="modal-header">
+        <h3 id="addEditModalTitle">Add Menu Item</h3>
+        <button onclick="closeModal('addItemModal')" class="modal-close">&times;</button>
+      </div>
+
+      <form id="addEditItemForm" th:action="@{/admin/menu/add}" method="post">
+
         <div class="form-row">
-          <div class="form-group"><label>Name *</label><input type="text" name="name" required/></div>
-          <div class="form-group"><label>Category *</label>
+          <div class="form-group">
+            <label>Name *</label>
+            <input type="text" name="name" required/>
+          </div>
+
+          <div class="form-group">
+            <label>Category *</label>
             <select name="category" class="form-select">
-              <option>Main Course</option><option>Starters</option>
-              <option>Snacks</option><option>Beverages</option><option>Desserts</option>
+              <option>Main Course</option>
+              <option>Starters</option>
+              <option>Snacks</option>
+              <option>Beverages</option>
+              <option>Desserts</option>
             </select>
           </div>
         </div>
-        <div class="form-group"><label>Description</label><input type="text" name="description"/></div>
-        <div class="form-row">
-          <div class="form-group"><label>Price (₹) *</label><input type="number" name="price" step="0.01" min="1" required/></div>
-          <div class="form-group"><label>Prep Time (min) *</label><input type="number" name="prepTimeMinutes" min="1" required/></div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" name="description"/>
         </div>
+
         <div class="form-row">
-          <div class="form-group"><label>Calories</label><input type="number" name="caloriesPerServing" min="0"/></div>
-          <div class="form-group"><label>Dietary Tags (comma-sep)</label><input type="text" name="dietaryTags" placeholder="VEG,GLUTEN_FREE"/></div>
+          <div class="form-group">
+            <label>Price (₹) *</label>
+            <input type="number" name="price" step="0.01" min="1" required/>
+          </div>
+
+          <div class="form-group">
+            <label>Prep Time (min) *</label>
+            <input type="number" name="prepTimeMinutes" min="1" required/>
+          </div>
         </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Calories</label>
+            <input type="number" name="caloriesPerServing" min="0"/>
+          </div>
+
+          <div class="form-group">
+            <label>Dietary Tags (comma-sep)</label>
+            <input type="text" name="dietaryTags" placeholder="VEG,GLUTEN_FREE"/>
+          </div>
+        </div>
+
+        <hr style="margin:12px 0 16px 0; border:none; border-top:1px solid #e5e7eb;"/>
+
+        <div class="form-group" style="margin-bottom:8px;">
+          <label style="font-weight:600;">Ingredients for this dish</label>
+          <div id="existingIngredientRows"></div>
+          <button type="button" class="btn btn-sm btn-outline" onclick="addExistingIngredientRow()" style="margin-top:8px;">
+            <i class="fa fa-plus"></i> Add Existing Ingredient
+          </button>
+        </div>
+
+        <div class="form-group" style="margin-top:14px;">
+          <label style="font-weight:600;">Create New Ingredients Here</label>
+          <div id="newIngredientRows"></div>
+          <button type="button" class="btn btn-sm btn-outline" onclick="addNewIngredientRow()" style="margin-top:8px;">
+            <i class="fa fa-plus"></i> Create Ingredient Row
+          </button>
+        </div>
+
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline" onclick="closeModal('addItemModal')">Cancel</button>
-          <button type="submit" class="btn btn-primary"><i class="fa fa-plus"></i> Add Item</button>
+          <button type="button" class="btn btn-outline"
+                  onclick="closeModal('addItemModal')">Cancel</button>
+          <button type="submit" id="addEditSubmitBtn" class="btn btn-primary">
+            <i class="fa fa-plus"></i> Add Item
+          </button>
         </div>
+
       </form>
     </div>
   </div>
 
-  <!-- Link Ingredient Modal -->
+  <template id="existingIngredientRowTemplate">
+    <div class="form-row ingredient-row" style="align-items:flex-end;">
+      <div class="form-group" style="flex:2;">
+        <label>Ingredient</label>
+        <select name="ingredientId" class="form-select">
+          <option value="">Select ingredient</option>
+          <option th:each="ing : ${ingredients}"
+                  th:value="${ing.id}"
+                  th:text="${ing.name + ' (' + ing.unit + ')'}"></option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1;">
+        <label>Qty / serving</label>
+        <input type="number" name="ingredientQuantity" step="0.01" min="0.01" placeholder="e.g. 80"/>
+      </div>
+      <div class="form-group" style="width:auto;">
+        <button type="button" class="btn btn-sm btn-danger" onclick="removeIngredientRow(this)">
+          <i class="fa fa-trash"></i>
+        </button>
+      </div>
+    </div>
+  </template>
+
+  <template id="newIngredientRowTemplate">
+    <div class="card" style="padding:10px; margin-bottom:10px; border:1px dashed #cbd5e1;">
+      <div class="form-row">
+        <div class="form-group" style="flex:2;">
+          <label>New Ingredient Name</label>
+          <input type="text" name="newIngredientName" placeholder="e.g. Paneer"/>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Unit</label>
+          <select name="newIngredientUnit" class="form-select">
+            <option>g</option><option>ml</option><option>kg</option>
+            <option>L</option><option>pcs</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Initial Stock</label>
+          <input type="number" name="newIngredientQuantityInStock" step="0.01" min="0" placeholder="0"/>
+        </div>
+        <div class="form-group">
+          <label>Low Stock Threshold</label>
+          <input type="number" name="newIngredientLowStockThreshold" step="0.01" min="0" placeholder="0"/>
+        </div>
+      </div>
+
+      <div class="form-row" style="align-items:flex-end;">
+        <div class="form-group">
+          <label>Cost / Unit (optional)</label>
+          <input type="number" name="newIngredientCostPerUnit" step="0.01" min="0"/>
+        </div>
+        <div class="form-group">
+          <label>Qty / serving for this dish</label>
+          <input type="number" name="newIngredientRecipeQty" step="0.01" min="0.01" placeholder="e.g. 120"/>
+        </div>
+        <div class="form-group" style="width:auto;">
+          <button type="button" class="btn btn-sm btn-danger" onclick="removeIngredientRow(this)">
+            <i class="fa fa-trash"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Ingredient Modal -->
   <div id="ingredientModal" class="modal-overlay" style="display:none;">
     <div class="modal">
-      <div class="modal-header"><h3>Map Ingredient to <span id="modalItemName"></span></h3><button onclick="closeModal('ingredientModal')" class="modal-close">&times;</button></div>
+
+      <div class="modal-header">
+        <h3>Map Ingredient to <span id="modalItemName"></span></h3>
+        <button onclick="closeModal('ingredientModal')" class="modal-close">&times;</button>
+      </div>
+
       <form id="ingredientForm" method="post">
+
         <div class="form-group">
           <label>Ingredient</label>
           <select name="ingredientId" class="form-select">
-            <option th:each="ing : ${ingredients}" th:value="${ing.id}"
+            <option th:each="ing : ${ingredients}"
+                    th:value="${ing.id}"
                     th:text="${ing.name + ' (' + ing.unit + ')'}"></option>
           </select>
         </div>
-        <div class="form-group"><label>Quantity per serving</label><input type="number" name="quantity" step="0.01" min="0.01" required/></div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline" onclick="closeModal('ingredientModal')">Cancel</button>
-          <button type="submit" class="btn btn-primary">Map Ingredient</button>
+
+        <div class="form-group">
+          <label>Quantity per serving</label>
+          <input type="number" name="quantity" step="0.01" min="0.01" required/>
         </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline"
+                  onclick="closeModal('ingredientModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            Map Ingredient
+          </button>
+        </div>
+
       </form>
     </div>
   </div>
 
+  <!-- ✅ FIXED JS -->
   <script>
-    function openIngredientModal(itemId, itemName) {
+    function appendTemplate(templateId, containerId) {
+      const template = document.getElementById(templateId);
+      const container = document.getElementById(containerId);
+      if (!template || !container) return;
+      container.appendChild(template.content.firstElementChild.cloneNode(true));
+    }
+
+    function addExistingIngredientRow(selectedIngredientId, qty) {
+      const template = document.getElementById('existingIngredientRowTemplate');
+      const container = document.getElementById('existingIngredientRows');
+      if (!template || !container) return;
+
+      const row = template.content.firstElementChild.cloneNode(true);
+      const select = row.querySelector('select[name="ingredientId"]');
+      const quantityInput = row.querySelector('input[name="ingredientQuantity"]');
+
+      if (select && selectedIngredientId != null) {
+        select.value = String(selectedIngredientId);
+      }
+      if (quantityInput && qty != null) {
+        quantityInput.value = qty;
+      }
+
+      container.appendChild(row);
+    }
+
+    function addNewIngredientRow() {
+      appendTemplate('newIngredientRowTemplate', 'newIngredientRows');
+    }
+
+    function removeIngredientRow(btn) {
+      const row = btn.closest('.ingredient-row, .card');
+      if (row) row.remove();
+    }
+
+    function resetAddEditForm() {
+      const form = document.getElementById('addEditItemForm');
+      const title = document.getElementById('addEditModalTitle');
+      const submitBtn = document.getElementById('addEditSubmitBtn');
+      const existingContainer = document.getElementById('existingIngredientRows');
+      const newContainer = document.getElementById('newIngredientRows');
+
+      if (!form || !title || !submitBtn || !existingContainer || !newContainer) return;
+
+      form.reset();
+      form.action = '/admin/menu/add';
+      title.textContent = 'Add Menu Item';
+      submitBtn.innerHTML = '<i class="fa fa-plus"></i> Add Item';
+
+      existingContainer.innerHTML = '';
+      newContainer.innerHTML = '';
+      addExistingIngredientRow();
+    }
+
+    function openAddItemModal() {
+      resetAddEditForm();
+      openModal('addItemModal');
+    }
+
+    function openEditItemModal(btn) {
+      const itemId = btn.getAttribute('data-id');
+      const form = document.getElementById('addEditItemForm');
+      const title = document.getElementById('addEditModalTitle');
+      const submitBtn = document.getElementById('addEditSubmitBtn');
+      const existingContainer = document.getElementById('existingIngredientRows');
+      const newContainer = document.getElementById('newIngredientRows');
+
+      if (!itemId || !form || !title || !submitBtn || !existingContainer || !newContainer) return;
+
+      resetAddEditForm();
+      title.textContent = 'Edit Menu Item';
+      submitBtn.innerHTML = '<i class="fa fa-save"></i> Save Changes';
+      form.action = '/admin/menu/' + itemId + '/edit';
+
+      fetch('/admin/menu/' + itemId + '/edit-data')
+        .then(function(response) {
+          if (!response.ok) {
+            throw new Error('Failed to load item details');
+          }
+          return response.json();
+        })
+        .then(function(data) {
+          form.elements['name'].value = data.name || '';
+          form.elements['description'].value = data.description || '';
+          form.elements['category'].value = data.category || 'Main Course';
+          form.elements['price'].value = data.price != null ? data.price : '';
+          form.elements['prepTimeMinutes'].value = data.prepTimeMinutes != null ? data.prepTimeMinutes : '';
+          form.elements['caloriesPerServing'].value = data.caloriesPerServing != null ? data.caloriesPerServing : '';
+          form.elements['dietaryTags'].value = data.dietaryTags || '';
+
+          existingContainer.innerHTML = '';
+          newContainer.innerHTML = '';
+          if (Array.isArray(data.ingredients) && data.ingredients.length > 0) {
+            data.ingredients.forEach(function(ing) {
+              addExistingIngredientRow(ing.id, ing.quantityPerServing);
+            });
+          } else {
+            addExistingIngredientRow();
+          }
+
+          openModal('addItemModal');
+        })
+        .catch(function() {
+          alert('Unable to load item details for edit.');
+        });
+    }
+
+    window.addEventListener('DOMContentLoaded', function() {
+      resetAddEditForm();
+    });
+
+    function openIngredientModal(btn) {
+      const itemId = btn.getAttribute('data-id');
+      const itemName = btn.getAttribute('data-name');
+
       document.getElementById('modalItemName').textContent = itemName;
-      document.getElementById('ingredientForm').action = '/admin/menu/' + itemId + '/ingredient';
+      document.getElementById('ingredientForm').action =
+          '/admin/menu/' + itemId + '/ingredient';
+
       openModal('ingredientModal');
     }
+
+    function openItemIngredientsModal(el) {
+      const itemId = el.getAttribute('data-id');
+      const itemName = el.getAttribute('data-name') || 'Item';
+      const modalTitle = document.getElementById('itemIngredientsModalName');
+      const modalBody = document.getElementById('itemIngredientsModalBody');
+
+      if (!itemId || !modalTitle || !modalBody) return;
+
+      modalTitle.textContent = itemName;
+      modalBody.innerHTML = '<div class="empty-cell" style="padding:8px 0;">Loading ingredients...</div>';
+      openModal('itemIngredientsModal');
+
+      fetch('/admin/menu/' + itemId + '/ingredients')
+        .then(function(response) {
+          if (!response.ok) {
+            throw new Error('Failed to load ingredients');
+          }
+          return response.json();
+        })
+        .then(function(ingredients) {
+          if (!Array.isArray(ingredients) || ingredients.length === 0) {
+            modalBody.innerHTML = '<div class="empty-cell" style="padding:8px 0;">No ingredients mapped for this item yet.</div>';
+            return;
+          }
+
+          const rows = ingredients.map(function(ing) {
+            const qty = ing.quantityPerServing != null ? Number(ing.quantityPerServing).toFixed(2) : '-';
+            const unit = ing.unit || '';
+            return '<tr>' +
+                     '<td>' + ing.name + '</td>' +
+                     '<td>' + qty + ' ' + unit + '</td>' +
+                   '</tr>';
+          }).join('');
+
+          modalBody.innerHTML =
+            '<div class="table-wrap" style="margin:0;">' +
+              '<table>' +
+                '<thead><tr><th>Ingredient</th><th>Quantity / serving</th></tr></thead>' +
+                '<tbody>' + rows + '</tbody>' +
+              '</table>' +
+            '</div>';
+        })
+        .catch(function() {
+          modalBody.innerHTML = '<div class="empty-cell" style="padding:8px 0;">Unable to load ingredients for this item.</div>';
+        });
+    }
   </script>
+
 </div>
 </body>
 </html>

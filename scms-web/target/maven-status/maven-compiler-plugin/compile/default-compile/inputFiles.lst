@@ -13,6 +13,7 @@ C:\Users\T Aniruddha\Desktop\PESU\ooad_project\Smart-Canteen-Management-System\s
 C:\Users\T Aniruddha\Desktop\PESU\ooad_project\Smart-Canteen-Management-System\scms-web\src\main\java\com\scms\model\User.java
 C:\Users\T Aniruddha\Desktop\PESU\ooad_project\Smart-Canteen-Management-System\scms-web\src\main\java\com\scms\model\Coupon.java
 C:\Users\T Aniruddha\Desktop\PESU\ooad_project\Smart-Canteen-Management-System\scms-web\src\main\java\com\scms\model\enums\PaymentMethod.java
+C:\Users\T Aniruddha\Desktop\PESU\ooad_project\Smart-Canteen-Management-System\scms-web\src\main\java\com\scms\model\dto\OrderIngredientUsage.java
 C:\Users\T Aniruddha\Desktop\PESU\ooad_project\Smart-Canteen-Management-System\scms-web\src\main\java\com\scms\repository\OrderRepository.java
 C:\Users\T Aniruddha\Desktop\PESU\ooad_project\Smart-Canteen-Management-System\scms-web\src\main\java\com\scms\config\GlobalModelAdvice.java
 C:\Users\T Aniruddha\Desktop\PESU\ooad_project\Smart-Canteen-Management-System\scms-web\src\main\java\com\scms\ScmsApplication.java

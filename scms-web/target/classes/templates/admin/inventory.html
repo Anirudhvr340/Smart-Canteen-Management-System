@@ -37,7 +37,7 @@
           <td th:text="${ing.id}"></td>
           <td th:text="${ing.name}"></td>
 
-          <!-- Stock Column -->
+          <!-- Stock -->
           <td>
             <div class="stock-bar-wrap">
               <div class="stock-bar">
@@ -68,8 +68,13 @@
 
           <!-- Actions -->
           <td class="actions-cell">
+            <!-- ✅ FIXED BUTTON -->
             <button class="btn btn-sm btn-primary"
-                    th:onclick="|openRestockModal(${ing.id}, '${ing.name}', ${ing.quantityInStock}, '${ing.unit}')|">
+                    th:attr="data-id=${ing.id},
+                             data-name=${ing.name},
+                             data-stock=${ing.quantityInStock},
+                             data-unit=${ing.unit}"
+                    onclick="handleRestock(this)">
               <i class="fa fa-plus"></i> Restock
             </button>
 
@@ -84,7 +89,7 @@
           </td>
         </tr>
 
-        <!-- Empty State -->
+        <!-- Empty -->
         <tr th:if="${ingredients == null or #lists.isEmpty(ingredients)}">
           <td colspan="8" class="empty-cell">No ingredients yet.</td>
         </tr>
@@ -157,7 +162,7 @@
 
         <div class="form-group">
           <label>Adjust Amount (+/- <span id="restockUnit"></span>)</label>
-          <input type="number" name="amount" step="0.01" placeholder="Use negative to reduce" required/>
+          <input type="number" name="amount" step="0.01" required/>
         </div>
 
         <div class="modal-footer">
@@ -170,8 +175,17 @@
     </div>
   </div>
 
-  <!-- JS -->
+  <!-- ✅ JS FIX -->
   <script>
+    function handleRestock(btn) {
+      const id = btn.getAttribute('data-id');
+      const name = btn.getAttribute('data-name');
+      const current = btn.getAttribute('data-stock');
+      const unit = btn.getAttribute('data-unit');
+
+      openRestockModal(id, name, current, unit);
+    }
+
     function openRestockModal(id, name, current, unit) {
       document.getElementById('restockName').textContent = name;
       document.getElementById('restockCurrent').value = current + ' ' + unit;

@@ -111,6 +111,21 @@ public class CustomerController {
         return "customer/order-detail";
     }
 
+    @PostMapping("/orders/{id}/cancel-request")
+    public String requestCancel(@PathVariable Long id,
+                                @RequestParam(defaultValue = "Requested by customer") String reason,
+                                Authentication auth,
+                                RedirectAttributes ra) {
+        User user = currentUser(auth);
+        try {
+            orderService.requestCustomerCancellation(id, user.getId(), reason);
+            ra.addFlashAttribute("success", "Cancellation request sent to kitchen staff.");
+        } catch (Exception e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/customer/orders";
+    }
+
     // ── Feedback ──────────────────────────────────────────────────────────────
 
     @PostMapping("/feedback")

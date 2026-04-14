@@ -3,37 +3,102 @@
       th:replace="~{layout :: layout(~{this :: content}, 'My Orders')}">
 <body>
 <div th:fragment="content">
-  <div class="card-header-standalone"><h2>My Orders</h2><a th:href="@{/customer/menu}" class="btn btn-primary"><i class="fa fa-plus"></i> New Order</a></div>
+  <div class="card-header-standalone">
+    <h2>My Orders</h2>
+    <a th:href="@{/customer/menu}" class="btn btn-primary">
+      <i class="fa fa-plus"></i> New Order
+    </a>
+  </div>
+
   <div th:if="${#lists.isEmpty(orders)}" class="empty-state-card">
     <i class="fa fa-bag-shopping" style="font-size:48px;color:#6366f1;"></i>
-    <h3>No orders yet</h3><p>Browse the menu and place your first order!</p>
+    <h3>No orders yet</h3>
+    <p>Browse the menu and place your first order!</p>
     <a th:href="@{/customer/menu}" class="btn btn-primary">Browse Menu</a>
   </div>
+
   <div class="orders-list">
     <div class="order-card" th:each="o : ${orders}">
+      
+      <!-- Header -->
       <div class="order-card-header">
         <div>
-          <span class="order-id">#<span th:text="${o.id}"></span></span>
-          <span class="order-date" th:text="${#temporals.format(o.createdAt,'dd MMM yyyy, HH:mm')}"></span>
+          <span class="order-id">
+            #<span th:text="${o.id}"></span>
+          </span>
+          <span class="order-date"
+                th:text="${#temporals.format(o.createdAt,'dd MMM yyyy, HH:mm')}">
+          </span>
         </div>
-        <span class="badge" th:classappend="'badge-' + ${o.status.name().toLowerCase()}" th:text="${o.status}"></span>
+        <span class="badge"
+              th:classappend="'badge-' + ${o.status.name().toLowerCase()}"
+              th:text="${o.status}">
+        </span>
       </div>
+
+      <!-- Items -->
       <div class="order-items">
         <span th:each="oi : ${o.items}" class="order-item-chip">
           <span th:text="${oi.quantity + 'x ' + oi.menuItem.name}"></span>
         </span>
       </div>
+
+      <!-- Footer -->
       <div class="order-card-footer">
         <div class="order-totals">
-          <span th:if="${o.couponCode != null}">🎟️ <span th:text="${o.couponCode}"></span> applied</span>
-          <span th:if="${o.discountApplied > 0}">Saved ₹<span th:text="${#numbers.formatDecimal(o.discountApplied,1,2)}"></span></span>
-          <strong>Total: ₹<span th:text="${#numbers.formatDecimal(o.finalTotal,1,2)}"></span></strong>
+
+          <span th:if="${o.couponCode != null}">
+            🎟️ <span th:text="${o.couponCode}"></span> applied
+          </span>
+
+          <span th:if="${o.discountApplied > 0}">
+            Saved ₹<span th:text="${#numbers.formatDecimal(o.discountApplied,1,2)}"></span>
+          </span>
+
+          <strong>
+            Total: ₹<span th:text="${#numbers.formatDecimal(o.finalTotal,1,2)}"></span>
+          </strong>
+
           <span th:text="${o.paymentMethod}"></span>
+
+          <span th:if="${o.customerNotification != null and !o.customerNotification.isBlank()}"
+                style="color:#14b8a6;">
+            • <span th:text="${o.customerNotification}"></span>
+          </span>
         </div>
-        <a th:href="@{/customer/orders/{id}(id=${o.id})}" class="btn btn-sm btn-outline">
-          <i class="fa fa-eye"></i> View Details
-        </a>
+
+        <!-- Actions -->
+        <div style="display:flex;gap:8px;align-items:center;">
+
+          <!-- Cancel Request Button -->
+          <form th:if="${(o.status.name() == 'CONFIRMED' or o.status.name() == 'PREPARING') 
+                        and (o.customerCancelRequested == false)}"
+                th:action="@{/customer/orders/{id}/cancel-request(id=${o.id})}"
+                method="post"
+                style="display:inline;">
+            <input type="hidden" name="reason" value="Customer requested cancellation"/>
+            <button type="submit"
+                    class="btn btn-sm btn-danger"
+                    onclick="return confirm('Send cancellation request to kitchen staff?')">
+              <i class="fa fa-ban"></i> Request Cancel
+            </button>
+          </form>
+
+          <!-- Cancel Requested Badge -->
+          <span th:if="${o.customerCancelRequested == true}"
+                class="badge badge-warning">
+            Cancel Requested
+          </span>
+
+          <!-- View Details -->
+          <a th:href="@{/customer/orders/{id}(id=${o.id})}"
+             class="btn btn-sm btn-outline">
+            <i class="fa fa-eye"></i> View Details
+          </a>
+
+        </div>
       </div>
+
     </div>
   </div>
 </div>

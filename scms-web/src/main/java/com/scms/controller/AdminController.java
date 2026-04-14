@@ -8,6 +8,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Controller
 @RequestMapping("/admin")
@@ -52,15 +53,112 @@ public class AdminController {
                           @RequestParam String category,  @RequestParam double price,
                           @RequestParam int prepTimeMinutes, @RequestParam(required=false) Integer caloriesPerServing,
                           @RequestParam(required=false) String dietaryTags,
+                          @RequestParam(required=false) List<String> ingredientId,
+                          @RequestParam(required=false) List<String> ingredientQuantity,
+                          @RequestParam(required=false) List<String> newIngredientName,
+                          @RequestParam(required=false) List<String> newIngredientUnit,
+                          @RequestParam(required=false) List<String> newIngredientQuantityInStock,
+                          @RequestParam(required=false) List<String> newIngredientLowStockThreshold,
+                          @RequestParam(required=false) List<String> newIngredientCostPerUnit,
+                          @RequestParam(required=false) List<String> newIngredientRecipeQty,
                           RedirectAttributes ra) {
         MenuItem item = MenuItem.builder()
                 .name(name).description(description).category(category)
                 .price(price).prepTimeMinutes(prepTimeMinutes)
                 .caloriesPerServing(caloriesPerServing)
                 .dietaryTags(dietaryTags).build();
-        menuService.save(item);
-        ra.addFlashAttribute("success", "Menu item added: " + name);
+        item = menuService.save(item);
+
+        int mappedCount = processIngredientMappings(
+                item,
+                ingredientId,
+                ingredientQuantity,
+                newIngredientName,
+                newIngredientUnit,
+                newIngredientQuantityInStock,
+                newIngredientLowStockThreshold,
+                newIngredientCostPerUnit,
+                newIngredientRecipeQty
+        );
+
+        inventoryService.refreshMenuAvailability();
+        ra.addFlashAttribute("success", "Menu item added: " + name + (mappedCount > 0 ? " (" + mappedCount + " ingredients mapped)" : ""));
         return "redirect:/admin/menu";
+    }
+
+    @PostMapping("/menu/{id}/edit")
+    public String editItem(@PathVariable Long id,
+                           @RequestParam String name,
+                           @RequestParam String description,
+                           @RequestParam String category,
+                           @RequestParam double price,
+                           @RequestParam int prepTimeMinutes,
+                           @RequestParam(required=false) Integer caloriesPerServing,
+                           @RequestParam(required=false) String dietaryTags,
+                           @RequestParam(required=false) List<String> ingredientId,
+                           @RequestParam(required=false) List<String> ingredientQuantity,
+                           @RequestParam(required=false) List<String> newIngredientName,
+                           @RequestParam(required=false) List<String> newIngredientUnit,
+                           @RequestParam(required=false) List<String> newIngredientQuantityInStock,
+                           @RequestParam(required=false) List<String> newIngredientLowStockThreshold,
+                           @RequestParam(required=false) List<String> newIngredientCostPerUnit,
+                           @RequestParam(required=false) List<String> newIngredientRecipeQty,
+                           RedirectAttributes ra) {
+        MenuItem item = menuService.getById(id);
+        item.setName(name);
+        item.setDescription(description);
+        item.setCategory(category);
+        item.setPrice(price);
+        item.setPrepTimeMinutes(prepTimeMinutes);
+        item.setCaloriesPerServing(caloriesPerServing);
+        item.setDietaryTags(dietaryTags);
+
+        // Replace existing recipe with submitted one.
+        item.getIngredientQuantities().clear();
+        item = menuService.save(item);
+
+        int mappedCount = processIngredientMappings(
+                item,
+                ingredientId,
+                ingredientQuantity,
+                newIngredientName,
+                newIngredientUnit,
+                newIngredientQuantityInStock,
+                newIngredientLowStockThreshold,
+                newIngredientCostPerUnit,
+                newIngredientRecipeQty
+        );
+
+        inventoryService.refreshMenuAvailability();
+        ra.addFlashAttribute("success", "Menu item updated: " + name + (mappedCount > 0 ? " (" + mappedCount + " ingredients mapped)" : ""));
+        return "redirect:/admin/menu";
+    }
+
+    @GetMapping("/menu/{id}/edit-data")
+    @ResponseBody
+    public MenuItemEditView getMenuItemEditData(@PathVariable Long id) {
+        MenuItem item = menuService.getById(id);
+        List<MenuIngredientView> ingredientViews = menuService.getIngredientInfo(id)
+                .stream()
+                .map(info -> new MenuIngredientView(
+                        info.id(),
+                        info.name(),
+                        info.unit(),
+                        info.quantityPerServing()
+                ))
+                .toList();
+
+        return new MenuItemEditView(
+                item.getId(),
+                item.getName(),
+                item.getDescription(),
+                item.getCategory(),
+                item.getPrice(),
+                item.getPrepTimeMinutes(),
+                item.getCaloriesPerServing(),
+                item.getDietaryTags(),
+                ingredientViews
+        );
     }
 
     @PostMapping("/menu/{id}/toggle")
@@ -85,6 +183,21 @@ public class AdminController {
         menuService.mapIngredient(id, ingredientId, quantity);
         ra.addFlashAttribute("success", "Ingredient mapped.");
         return "redirect:/admin/menu";
+    }
+
+    @GetMapping("/menu/{id}/ingredients")
+    @ResponseBody
+    public List<MenuIngredientView> getItemIngredients(@PathVariable Long id) {
+        menuService.getById(id);
+        return menuService.getIngredientInfo(id)
+            .stream()
+            .map(info -> new MenuIngredientView(
+                info.id(),
+                info.name(),
+                info.unit(),
+                info.quantityPerServing()
+            ))
+            .toList();
     }
 
     // ── Inventory management ──────────────────────────────────────────────────
@@ -196,4 +309,111 @@ public class AdminController {
         ra.addFlashAttribute("success","Feedback flagged.");
         return "redirect:/admin/feedback";
     }
+
+    private String getListValue(List<String> values, int index) {
+        if (values == null || index < 0 || index >= values.size()) {
+            return null;
+        }
+        return values.get(index);
+    }
+
+    private Double parseDoubleOrNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Double.parseDouble(value.trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private double parseDoubleOrDefault(String value, double defaultValue) {
+        Double parsed = parseDoubleOrNull(value);
+        return parsed != null ? parsed : defaultValue;
+    }
+
+    private Long parseLongOrNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private int processIngredientMappings(MenuItem item,
+                                          List<String> ingredientId,
+                                          List<String> ingredientQuantity,
+                                          List<String> newIngredientName,
+                                          List<String> newIngredientUnit,
+                                          List<String> newIngredientQuantityInStock,
+                                          List<String> newIngredientLowStockThreshold,
+                                          List<String> newIngredientCostPerUnit,
+                                          List<String> newIngredientRecipeQty) {
+        int mappedCount = 0;
+
+        if (ingredientId != null && ingredientQuantity != null) {
+            int count = Math.min(ingredientId.size(), ingredientQuantity.size());
+            for (int i = 0; i < count; i++) {
+                Long ingId = parseLongOrNull(ingredientId.get(i));
+                Double qty = parseDoubleOrNull(ingredientQuantity.get(i));
+                if (ingId != null && qty != null && qty > 0) {
+                    menuService.mapIngredient(item.getId(), ingId, qty);
+                    mappedCount++;
+                }
+            }
+        }
+
+        if (newIngredientName != null) {
+            int count = newIngredientName.size();
+            for (int i = 0; i < count; i++) {
+                String ingName = getListValue(newIngredientName, i);
+                if (ingName == null || ingName.isBlank()) {
+                    continue;
+                }
+
+                String unit = getListValue(newIngredientUnit, i);
+                if (unit == null || unit.isBlank()) {
+                    unit = "g";
+                }
+
+                double quantityInStock = Math.max(0.0, parseDoubleOrDefault(getListValue(newIngredientQuantityInStock, i), 0.0));
+                double lowStockThreshold = Math.max(0.0, parseDoubleOrDefault(getListValue(newIngredientLowStockThreshold, i), 0.0));
+                Double costPerUnit = parseDoubleOrNull(getListValue(newIngredientCostPerUnit, i));
+                double recipeQty = parseDoubleOrDefault(getListValue(newIngredientRecipeQty, i), 0.0);
+
+                Ingredient ingredient = Ingredient.builder()
+                        .name(ingName.trim())
+                        .unit(unit)
+                        .quantityInStock(quantityInStock)
+                        .lowStockThreshold(lowStockThreshold)
+                        .costPerUnit(costPerUnit)
+                        .build();
+
+                ingredient = inventoryService.save(ingredient);
+
+                if (recipeQty > 0) {
+                    menuService.mapIngredient(item.getId(), ingredient.getId(), recipeQty);
+                    mappedCount++;
+                }
+            }
+        }
+
+        return mappedCount;
+    }
+
+    private record MenuIngredientView(Long id, String name, String unit, Double quantityPerServing) {}
+
+    private record MenuItemEditView(Long id,
+                                    String name,
+                                    String description,
+                                    String category,
+                                    Double price,
+                                    Integer prepTimeMinutes,
+                                    Integer caloriesPerServing,
+                                    String dietaryTags,
+                                    List<MenuIngredientView> ingredients) {}
 }
