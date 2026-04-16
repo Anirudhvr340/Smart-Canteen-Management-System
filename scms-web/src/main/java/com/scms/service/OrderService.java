@@ -1,5 +1,6 @@
 package com.scms.service;
 
+import com.scms.factory.OrderFactory;
 import com.scms.model.*;
 import com.scms.model.dto.OrderIngredientUsage;
 import com.scms.model.enums.OrderStatus;
@@ -23,6 +24,7 @@ public class OrderService {
     private final MenuService menuService;
     private final CouponService couponService;
     private final InventoryService inventoryService;
+    private final OrderFactory orderFactory;
 
     // ── Cart / placement ─────────────────────────────────────────────────────
 
@@ -33,11 +35,7 @@ public class OrderService {
                             PaymentMethod paymentMethod,
                             LocalDateTime pickupTime) {
 
-        Order order = Order.builder()
-                .customer(customer)
-                .scheduledPickupTime(pickupTime != null ? pickupTime : LocalDateTime.now().plusMinutes(15))
-                .paymentMethod(paymentMethod)
-                .build();
+        Order order = orderFactory.createOrder(customer, paymentMethod, pickupTime);
 
         // Add items
         for (Map.Entry<Long, Integer> entry : itemQtyMap.entrySet()) {
@@ -45,12 +43,7 @@ public class OrderService {
             if (!mi.getAvailable())
                 throw new IllegalStateException(mi.getName() + " is currently unavailable.");
 
-            OrderItem oi = OrderItem.builder()
-                    .order(order)
-                    .menuItem(mi)
-                    .quantity(entry.getValue())
-                    .priceAtOrder(mi.getPrice())
-                    .build();
+            OrderItem oi = orderFactory.createOrderItem(order, mi, entry.getValue());
             order.getItems().add(oi);
         }
 

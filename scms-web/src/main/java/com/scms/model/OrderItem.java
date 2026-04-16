@@ -30,4 +30,15 @@ public class OrderItem {
     public double getSubtotal() {
         return priceAtOrder * quantity;
     }
+
+    public OrderItem copyFor(Order targetOrder) {
+        // Prototype helper for duplicating a line item into another order.
+        return OrderItem.builder()
+                .order(targetOrder)
+                .menuItem(menuItem)
+                .quantity(quantity)
+                .priceAtOrder(priceAtOrder)
+                .specialInstructions(specialInstructions)
+                .build();
+    }
 }

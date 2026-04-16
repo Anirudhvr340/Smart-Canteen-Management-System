@@ -2,13 +2,13 @@ package com.scms.controller;
 
 import com.scms.model.enums.OrderStatus;
 import com.scms.service.OrderService;
+import com.scms.service.RequestParameterParser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -18,6 +18,7 @@ import java.util.Map;
 public class StaffController {
 
     private final OrderService orderService;
+    private final RequestParameterParser requestParameterParser;
 
     @GetMapping("/queue")
     public String queue(Model model) {
@@ -61,27 +62,9 @@ public class StaffController {
                                        @RequestParam(defaultValue = "Cancelled after customer request") String reason,
                                        RedirectAttributes ra) {
         try {
-            Map<Long, Double> ingredientQuantities = new LinkedHashMap<>();
-            for (Map.Entry<String, String> entry : params.entrySet()) {
-                if (!entry.getKey().startsWith("returnQty_")) {
-                    continue;
-                }
-                String value = entry.getValue();
-                if (value == null || value.isBlank()) {
-                    continue;
-                }
-                try {
-                    long ingredientId = Long.parseLong(entry.getKey().replace("returnQty_", ""));
-                    if (!params.containsKey("ingredientSelected_" + ingredientId)) {
-                        continue;
-                    }
-                    double quantity = Double.parseDouble(value.trim());
-                    if (quantity > 0) {
-                        ingredientQuantities.put(ingredientId, quantity);
-                    }
-                } catch (NumberFormatException ignored) {
-                }
-            }
+            // Reuse the same parsing rule across cancellation workflows.
+            Map<Long, Double> ingredientQuantities = requestParameterParser
+                    .parseSelectedPositiveDoubleMap(params, "returnQty_", "ingredientSelected_");
             orderService.processCustomerCancellationRequest(id, ingredientQuantities, reason);
             ra.addFlashAttribute("success", "Customer cancellation processed for order #" + id + ".");
         } catch (Exception e) {

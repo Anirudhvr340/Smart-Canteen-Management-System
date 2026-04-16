@@ -1,6 +1,6 @@
 package com.scms.config;
 
-import com.scms.service.UserService;
+import com.scms.service.CurrentUserResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -10,12 +10,10 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 @RequiredArgsConstructor
 public class GlobalModelAdvice {
 
-    private final UserService userService;
+    private final CurrentUserResolver currentUserResolver;
 
     @ModelAttribute("currentUser")
     public com.scms.model.User currentUser(Authentication auth) {
-        if (auth == null || !auth.isAuthenticated()) return null;
-        try { return userService.getByEmail(auth.getName()); }
-        catch (Exception e) { return null; }
+        return currentUserResolver.resolve(auth);
     }
 }

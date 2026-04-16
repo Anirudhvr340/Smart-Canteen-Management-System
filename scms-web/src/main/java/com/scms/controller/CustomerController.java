@@ -21,9 +21,11 @@ public class CustomerController {
     private final MenuService menuService;
     private final OrderService orderService;
     private final FeedbackService feedbackService;
+    private final CurrentUserResolver currentUserResolver;
+    private final RequestParameterParser requestParameterParser;
 
     private User currentUser(Authentication auth) {
-        return userService.getByEmail(auth.getName());
+        return currentUserResolver.resolve(auth);
     }
 
     // ── Menu ─────────────────────────────────────────────────────────────────
@@ -53,20 +55,8 @@ public class CustomerController {
     public String placeOrder(@RequestParam Map<String, String> params,
                              Authentication auth, RedirectAttributes ra) {
         User user = currentUser(auth);
-
-        // Parse itemId_qty params (e.g. item_1=2, item_3=1)
-        Map<Long, Integer> itemQtyMap = new LinkedHashMap<>();
-        for (Map.Entry<String, String> e : params.entrySet()) {
-            if (e.getKey().startsWith("item_") && !e.getValue().isBlank()) {
-                try {
-                    int qty = Integer.parseInt(e.getValue().trim());
-                    if (qty > 0) {
-                        Long itemId = Long.parseLong(e.getKey().replace("item_", ""));
-                        itemQtyMap.put(itemId, qty);
-                    }
-                } catch (NumberFormatException ignored) {}
-            }
-        }
+        // Keep form parsing out of the controller flow.
+        Map<Long, Integer> itemQtyMap = requestParameterParser.parsePositiveIntegerMap(params, "item_");
 
         if (itemQtyMap.isEmpty()) {
             ra.addFlashAttribute("error", "Please add at least one item to your order.");

@@ -1,5 +1,8 @@
 package com.scms.controller;
 
+import com.scms.factory.CouponFactory;
+import com.scms.factory.IngredientFactory;
+import com.scms.factory.MenuItemFactory;
 import com.scms.model.*;
 import com.scms.service.*;
 import lombok.RequiredArgsConstructor;
@@ -7,7 +10,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Controller
@@ -22,6 +24,10 @@ public class AdminController {
     private final UserService userService;
     private final FeedbackService feedbackService;
     private final AnalyticsService analyticsService;
+    private final MenuItemFactory menuItemFactory;
+    private final IngredientFactory ingredientFactory;
+    private final CouponFactory couponFactory;
+    private final RequestParameterParser requestParameterParser;
 
     // ── Dashboard ─────────────────────────────────────────────────────────────
 
@@ -62,11 +68,15 @@ public class AdminController {
                           @RequestParam(required=false) List<String> newIngredientCostPerUnit,
                           @RequestParam(required=false) List<String> newIngredientRecipeQty,
                           RedirectAttributes ra) {
-        MenuItem item = MenuItem.builder()
-                .name(name).description(description).category(category)
-                .price(price).prepTimeMinutes(prepTimeMinutes)
-                .caloriesPerServing(caloriesPerServing)
-                .dietaryTags(dietaryTags).build();
+                MenuItem item = menuItemFactory.create(
+                    name,
+                    description,
+                    category,
+                    price,
+                    prepTimeMinutes,
+                    caloriesPerServing,
+                    dietaryTags
+                );
         item = menuService.save(item);
 
         int mappedCount = processIngredientMappings(
@@ -104,7 +114,7 @@ public class AdminController {
                            @RequestParam(required=false) List<String> newIngredientCostPerUnit,
                            @RequestParam(required=false) List<String> newIngredientRecipeQty,
                            RedirectAttributes ra) {
-        MenuItem item = menuService.getById(id);
+                MenuItem item = menuItemFactory.copyOf(menuService.getById(id));
         item.setName(name);
         item.setDescription(description);
         item.setCategory(category);
@@ -213,8 +223,7 @@ public class AdminController {
     public String addIngredient(@RequestParam String name, @RequestParam double quantityInStock,
                                 @RequestParam double lowStockThreshold, @RequestParam String unit,
                                 @RequestParam(required=false, defaultValue="0") double costPerUnit, RedirectAttributes ra) {
-        Ingredient ing = Ingredient.builder().name(name).quantityInStock(quantityInStock)
-                .lowStockThreshold(lowStockThreshold).unit(unit).costPerUnit(costPerUnit).build();
+        Ingredient ing = ingredientFactory.create(name, quantityInStock, lowStockThreshold, unit, costPerUnit);
         inventoryService.save(ing);
         ra.addFlashAttribute("success", "Ingredient added: " + name);
         return "redirect:/admin/inventory";
@@ -247,9 +256,7 @@ public class AdminController {
                             @RequestParam double value, @RequestParam double minOrderValue,
                             @RequestParam double maxDiscount, @RequestParam int usageLimit,
                             @RequestParam int expiryDays, RedirectAttributes ra) {
-        Coupon c = Coupon.builder().code(code.toUpperCase()).type(type).value(value)
-                .minOrderValue(minOrderValue).maxDiscount(maxDiscount).usageLimit(usageLimit)
-                .expiresAt(LocalDateTime.now().plusDays(expiryDays)).build();
+        Coupon c = couponFactory.create(code, type, value, minOrderValue, maxDiscount, usageLimit, expiryDays);
         couponService.save(c);
         ra.addFlashAttribute("success", "Coupon created: " + code);
         return "redirect:/admin/coupons";
@@ -310,40 +317,6 @@ public class AdminController {
         return "redirect:/admin/feedback";
     }
 
-    private String getListValue(List<String> values, int index) {
-        if (values == null || index < 0 || index >= values.size()) {
-            return null;
-        }
-        return values.get(index);
-    }
-
-    private Double parseDoubleOrNull(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        try {
-            return Double.parseDouble(value.trim());
-        } catch (NumberFormatException ex) {
-            return null;
-        }
-    }
-
-    private double parseDoubleOrDefault(String value, double defaultValue) {
-        Double parsed = parseDoubleOrNull(value);
-        return parsed != null ? parsed : defaultValue;
-    }
-
-    private Long parseLongOrNull(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        try {
-            return Long.parseLong(value.trim());
-        } catch (NumberFormatException ex) {
-            return null;
-        }
-    }
-
     private int processIngredientMappings(MenuItem item,
                                           List<String> ingredientId,
                                           List<String> ingredientQuantity,
@@ -358,8 +331,8 @@ public class AdminController {
         if (ingredientId != null && ingredientQuantity != null) {
             int count = Math.min(ingredientId.size(), ingredientQuantity.size());
             for (int i = 0; i < count; i++) {
-                Long ingId = parseLongOrNull(ingredientId.get(i));
-                Double qty = parseDoubleOrNull(ingredientQuantity.get(i));
+                Long ingId = requestParameterParser.parseLongOrNull(ingredientId.get(i));
+                Double qty = requestParameterParser.parseDoubleOrNull(ingredientQuantity.get(i));
                 if (ingId != null && qty != null && qty > 0) {
                     menuService.mapIngredient(item.getId(), ingId, qty);
                     mappedCount++;
@@ -370,28 +343,28 @@ public class AdminController {
         if (newIngredientName != null) {
             int count = newIngredientName.size();
             for (int i = 0; i < count; i++) {
-                String ingName = getListValue(newIngredientName, i);
+                String ingName = requestParameterParser.getListValue(newIngredientName, i);
                 if (ingName == null || ingName.isBlank()) {
                     continue;
                 }
 
-                String unit = getListValue(newIngredientUnit, i);
+                String unit = requestParameterParser.getListValue(newIngredientUnit, i);
                 if (unit == null || unit.isBlank()) {
                     unit = "g";
                 }
 
-                double quantityInStock = Math.max(0.0, parseDoubleOrDefault(getListValue(newIngredientQuantityInStock, i), 0.0));
-                double lowStockThreshold = Math.max(0.0, parseDoubleOrDefault(getListValue(newIngredientLowStockThreshold, i), 0.0));
-                Double costPerUnit = parseDoubleOrNull(getListValue(newIngredientCostPerUnit, i));
-                double recipeQty = parseDoubleOrDefault(getListValue(newIngredientRecipeQty, i), 0.0);
+                double quantityInStock = Math.max(0.0, requestParameterParser.parseDoubleOrDefault(requestParameterParser.getListValue(newIngredientQuantityInStock, i), 0.0));
+                double lowStockThreshold = Math.max(0.0, requestParameterParser.parseDoubleOrDefault(requestParameterParser.getListValue(newIngredientLowStockThreshold, i), 0.0));
+                Double costPerUnit = requestParameterParser.parseDoubleOrNull(requestParameterParser.getListValue(newIngredientCostPerUnit, i));
+                double recipeQty = requestParameterParser.parseDoubleOrDefault(requestParameterParser.getListValue(newIngredientRecipeQty, i), 0.0);
 
-                Ingredient ingredient = Ingredient.builder()
-                        .name(ingName.trim())
-                        .unit(unit)
-                        .quantityInStock(quantityInStock)
-                        .lowStockThreshold(lowStockThreshold)
-                        .costPerUnit(costPerUnit)
-                        .build();
+                Ingredient ingredient = ingredientFactory.create(
+                        ingName.trim(),
+                        quantityInStock,
+                        lowStockThreshold,
+                        unit,
+                        costPerUnit
+                );
 
                 ingredient = inventoryService.save(ingredient);
 
